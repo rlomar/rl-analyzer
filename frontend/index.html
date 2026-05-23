@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RL Analyzer - تحليل ريبلاي روكيت ليق</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">⚡</div>
+                <h1>RL <span>Analyzer</span></h1>
+            </div>
+            <p class="subtitle">ارفع الريبلاي وحلل أدائك مع نصائح ذكية</p>
+        </header>
+
+        <main>
+            <section id="api-section" class="card">
+                <h2>🔑 مفتاح API</h2>
+                <p style="color:#8892b0;font-size:14px;margin-bottom:12px;">احصل عليه مجاناً من ballchasing.com/account</p>
+                <div style="display:flex;gap:10px;">
+                    <input type="text" id="api-key-input" placeholder="ألصق مفتاح API هنا" style="flex:1;padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;direction:ltr;">
+                    <button onclick="saveApiKey()" class="btn" style="white-space:nowrap;">حفظ</button>
+                </div>
+                <p id="api-status" style="font-size:13px;margin-top:8px;color:#00c853;" class="hidden"></p>
+            </section>
+
+            <section id="upload-section" class="card upload-card">
+                <div id="drop-zone" class="drop-zone">
+                    <div class="drop-content">
+                        <div class="drop-icon">🎮</div>
+                        <h2>ارفع ملف الـ Replay</h2>
+                        <p>اسحب الملف هنا أو اضغط للاختيار</p>
+                        <p class="hint">الملفات تنتهي بـ .replay</p>
+                    </div>
+                    <input type="file" id="file-input" accept=".replay" hidden>
+                </div>
+                <div id="upload-status" class="upload-status hidden">
+                    <div class="spinner"></div>
+                    <p>جاري تحليل الريبلاي...</p>
+                </div>
+            </section>
+
+            <section id="results-section" class="hidden">
+                <div class="card" id="game-info">
+                    <h2>معلومات المباراة</h2>
+                    <div id="game-details" class="game-details"></div>
+                </div>
+
+                <div id="players-results"></div>
+
+                <div class="card disclaimer-card">
+                    <p>⚠️ التحليل يعتمد على الإحصائيات المتوفرة في الريبلاي. النصائح عامة ولزيادة الدقة يفضل استخدام تحليلات متقدمة.</p>
+                </div>
+            </section>
+
+            <section id="error-section" class="hidden">
+                <div class="card error-card">
+                    <div class="error-icon">❌</div>
+                    <h2>عذراً، حدث خطأ</h2>
+                    <p id="error-message"></p>
+                    <button onclick="resetApp()" class="btn">حاول مرة أخرى</button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>RL Analyzer — طُور لعشاق Rocket League</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
