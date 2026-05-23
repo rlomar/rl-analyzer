@@ -56,7 +56,7 @@ def analyze_replay():
         if not replay_id:
             return jsonify({"error": "ما لقيت replay ID"}), 500
 
-        for _ in range(15):
+        for _ in range(30):
             time.sleep(2)
             r2 = requests.get(
                 f"{BALLCHASING_API}/replays/{replay_id}",
@@ -64,7 +64,7 @@ def analyze_replay():
             )
             if r2.status_code == 200:
                 data = r2.json()
-                if data.get("status") == "done" or "players" in data.get("blue", {}):
+                if data.get("status") == "ok" or "goals" in data.get("blue", {}):
                     break
 
         analyzer = RocketLeagueAnalyzer(data)
