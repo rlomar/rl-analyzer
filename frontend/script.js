@@ -556,88 +556,51 @@ function detectQuestionType(text) {
     return "other";
 }
 
-// ─── COACH MATCHER (SMART) ─────────────────
+// ─── COACH MATCHER ─────────────────────────
 function findBestCategory(input) {
     const norm = normalize(input);
-    const words = tokenize(input);
-    const bigrams = getBigrams(words);
-    const trigrams = getTrigrams(words);
-    const wordSet = new Set(words);
 
-    let best = { entry: null, score: -999, type: "none" };
-    let second = { entry: null, score: -999, type: "none" };
+    let best = { entry: null, score: 0, matches: [] };
 
     for (const entry of coachKnowledge) {
         let score = 0;
-        let matchCount = 0;
+        const matchedKeywords = [];
 
-        // 1) Trigrams (most specific) — massive weight
-        for (const tri of trigrams) {
-            for (const topic of entry.topics) {
-                if (normalize(topic).includes(tri)) {
-                    score += tri.length * 8;
-                    matchCount++;
-                }
+        for (const topic of entry.topics) {
+            const t = normalize(topic);
+            // Exact multi-word phrase match is strongest
+            if (t.includes(" ") && norm.includes(t)) {
+                score += t.length * 6;
+                matchedKeywords.push(t);
+                continue;
+            }
+            // Exact single-word match
+            const wordsInNorm = norm.split(/\s+/);
+            if (wordsInNorm.includes(t) && t.length > 1) {
+                score += t.length * 4;
+                matchedKeywords.push(t);
+                continue;
+            }
+            // Norm contains the keyword (user wrote keyword as part of input)
+            if (norm.includes(t) && t.length >= 2) {
+                score += t.length * 2;
+                matchedKeywords.push(t);
+                continue;
             }
         }
 
-        // 2) Bigrams — high weight
-        for (const bi of bigrams) {
-            for (const topic of entry.topics) {
-                if (normalize(topic).includes(bi)) {
-                    score += bi.length * 5;
-                    matchCount++;
-                }
-            }
-        }
-
-        // 3) Full word matches — medium weight
-        for (const word of words) {
-            for (const topic of entry.topics) {
-                const tNorm = normalize(topic);
-                if (tNorm === word) {
-                    score += word.length * 4;
-                    matchCount++;
-                } else if (tNorm.includes(word) && word.length > 2) {
-                    score += 2;
-                    matchCount++;
-                } else if (word.includes(tNorm) && tNorm.length > 2) {
-                    score += 1;
-                    matchCount++;
-                }
-            }
-        }
-
-        // 4) Boost: topic name in user message
+        // Boost if category name is in input
         if (norm.includes(normalize(entry.name))) {
             score += 30;
-            matchCount += 5;
         }
 
-        // Penalize: if user explicitly mentions a different mode
-        if (entry.name === "الرياضة" && (norm.includes("دفاع") || norm.includes("مرمى") || norm.includes("save"))) {
-            score -= 5;
-        }
-        if (entry.name === "الدفاع" && (norm.includes("هجوم") || norm.includes("تسديد") || norm.includes("shot"))) {
-            score -= 3;
-        }
+        // Bonus: more unique keyword matches = stronger signal
+        if (matchedKeywords.length >= 3) score += 10;
+        if (matchedKeywords.length >= 2) score += 4;
 
         if (score > best.score) {
-            second = best;
-            best = { entry, score, matchCount };
-        } else if (score > second.score) {
-            second = { entry, score, matchCount };
+            best = { entry, score, matches: matchedKeywords };
         }
-
-        // Track the first candidate for context
-        if (!best.entry && score > 0) {
-            best = { entry, score, matchCount };
-        }
-    }
-
-    // If scores are close and match counts differ, prefer the one with more matches
-    if (best.entry && second.entry && best.score - second.score < 5 && best.matchCount < second.matchCount) {
-        return second;
     }
 
     return best;
@@ -683,19 +646,40 @@ function smartFallback(input) {
 
 // ─── COACH RESPONSE GENERATOR ──────────────
 function getCoachResponse(input) {
-    const lower = normalize(input.trim());
+    const norm = normalize(input.trim());
     const words = tokenize(input);
     coachContext.turnCount++;
 
-    // ── Pure greetings (short & direct) ──
-    const greetings = ["هلا", "هلو", "مرحبا", "هاي", "ها", "hi", "hello", "hey", "سلام", "اهلين", "مساء الخير", "السلام عليكم", "مساء", "صباح الخير", "هاي"];
-    if (words.length <= 3 && greetings.some(g => lower.includes(g))) {
-        return "وعليكم السلام! أهلاً بك. أنا جاهز لأي سؤال — روتنيشن، ميكانيك، بوست، تدريب، أو تحليل. وش عندك؟";
+    // ── KB matching FIRST — always try to match the actual question ──
+    const result = findBestCategory(input);
+    if (result.entry && result.score > 2) {
+        coachContext.lastTopic = result.entry;
+        const responses = result.entry.responses;
+        let idx = Math.floor(Math.random() * responses.length);
+        if (responses.length > 1) {
+            let tries = 0;
+            while (responses[idx] === coachContext.lastResponse && tries < responses.length) {
+                idx = (idx + 1) % responses.length;
+                tries++;
+            }
+        }
+        coachContext.lastResponse = responses[idx];
+        return responses[idx];
     }
 
-    // ── Thanks & farewells ──
+    // ── Smart fallback (covers personal questions, settings, rank, etc) ──
+    const smart = smartFallback(input);
+    if (smart) return smart;
+
+    // ── Pure greetings (only if very short and no KB match) ──
+    const greetings = ["هلا", "هلو", "مرحبا", "هاي", "hi", "hello", "hey", "سلام", "اهلين", "مساء الخير", "السلام عليكم", "صباح الخير"];
+    if (words.length <= 3 && greetings.some(g => norm.startsWith(g) || norm === g)) {
+        return "وعليكم السلام! أنا جاهز لأي سؤال — روتنيشن، ميكانيك، بوست، تدريب، أو تحليل. وش عندك؟";
+    }
+
+    // ── Thanks & farewells (only if very short and no KB match) ──
     const thanks = ["شكرا", "يسلمو", "تسلم", "thx", "thanks", "thank", "يعطيك", "الله يعافيك", "ما قصرت"];
-    if (words.length <= 4 && thanks.some(g => lower.includes(g)) && !lower.includes("سؤال")) {
+    if (words.length <= 3 && thanks.some(g => norm.startsWith(g) || norm === g)) {
         const farewells = [
             "العفو! أي وقت. شد حيلك و بتوصل GC قريباً 💪",
             "الله يسلمك! إذا احتجت شي ثاني — أنا موجود.",
@@ -706,52 +690,27 @@ function getCoachResponse(input) {
         return farewells[Math.floor(Math.random() * farewells.length)];
     }
 
-    // ── Follow-up chatter ──
+    // ── Affirmative follow-up ──
     const affirmatives = ["نعم", "اي", "ايه", "yes", "yeah", "يب", "ok", "اوكي", "تم", "طيب"];
-    if (words.length <= 3 && affirmatives.some(a => lower.includes(a))) {
+    if (words.length <= 2 && affirmatives.some(a => norm === a || norm.startsWith(a))) {
         const followups = [
             "تمام! جرب الكلام اللي قلته لك و ارجع لي بخبر.",
-            "كويس! عندك سؤال ثاني ولا شيء؟",
+            "كويس! عندك سؤال ثاني؟",
             "حلو. خلني أضيف: أهم شي الاستمرارية. كل يوم شوي — مو مرة في الأسبوع كثير.",
             "ممتاز! إذا تبغى شيء محدد — روتنيشن، ميكانيك، تدريب — قلي."
         ];
         return followups[Math.floor(Math.random() * followups.length)];
     }
 
-    // ── Ask about replay analysis (from the RL Analyzer results) ──
-    if (lower.includes("ريبلاي") || lower.includes("تحليل") || lower.includes("نصائح") || lower.includes("نتايج") || lower.includes("نتائج")) {
-        if (lower.includes("نصائح") || lower.includes("شفت")) {
-            return "نعم شفت التحليل. الأرقام مو كذب — اللي يبين من إحصائياتك:\n\nإذا **سرعة البوست** أقل من ٣٠ → تركز على جمع boost أكثر من اللعب. إذا **نسبة الدقة** أقل من ٢٠٪ مع محاولات كثيرة — تسدد من زوايا صعبة. إذا **السرعة المتوسطة** أقل من ١٥٠٠ — تتحرك ببطء.\n\nوش تبغى أركز عليه بالضبط؟";
-        }
-        return "حللنا الريبلاي حقك. الأرقام تتكلم. بس التحليل الحقيقي يكون لما تشوف الريبلاي بنفسك بنظرة ثالثة. ركز على:\n1️⃣ أول ٣ ثواني بعد ما تلمس الكورة — وين تروح؟\n2️⃣ الـ double commits — كم مرة لعبت وانت ورا زميلك؟\n3️⃣ كل هدف دخل عليك — ويش كان المفروض تسوي بدال اللي سويت؟\n\nجرب ذي الطريقة و رح تكتشف أخطاء ما كنت منتبه لها.";
+    // ── About replay analysis ──
+    if (norm.includes("ريبلاي") || norm.includes("نتايج") || norm.includes("نتائج")) {
+        return "حللنا الريبلاي حقك. الأرقام تتكلم. بس التحليل الحقيقي يكون لما تشوف الريبلاي بنفسك بنظرة ثالثة. ركز على:\n1️⃣ أول ٣ ثواني بعد ما تلمس الكورة — وين تروح؟\n2️⃣ الـ double commits — كم مرة لعبت وانت ورا زميلك؟\n3️⃣ كل هدف دخل عليك — ويش كان المفروض تسوي بدال اللي سويت؟";
     }
 
-    // ── Smart fallback before KB lookup (covers personal questions) ──
-    const smart = smartFallback(input);
-    if (smart) return smart;
-
-    // ── Knowledge Base matching ──
-    const result = findBestCategory(input);
-    if (result.entry && result.score > 0) {
-        coachContext.lastTopic = result.entry;
-        const responses = result.entry.responses;
-        // Rotate responses if possible to avoid same reply twice
-        let idx = Math.floor(Math.random() * responses.length);
-        if (responses.length > 1) {
-            while (responses[idx] === coachContext.lastResponse && responses.length > 1) {
-                idx = (idx + 1) % responses.length;
-            }
-        }
-        coachContext.lastResponse = responses[idx];
-        return responses[idx];
-    }
-
-    // ── Ultra fallback: analyze question words ──
-    const qType = detectQuestionType(input);
+    // ── Ultra fallback ──
     const ulf = [
         "صراحةً، سؤالك يحتاج تفصيل. وش بالضبط اللي تبغى تعرفه؟ مثلاً: روتنيشن ولا ميكانيك ولا تدريب؟.",
         "سؤال ممتاز. بس عشان أجاوب بدقة: هل تقصد في 1v1 ولا 2v2 ولا 3v3؟ كل طور له أسلوب مختلف.",
-        "فكرت في هالسؤال من زمان. الإجابة المختصرة: ركز على الأساسيات. إجابة كاملة: وش بالضبط مستواك الحالي وراح أعطيك خطة مخصصة.",
         "أقدر أفيدك بشرط: حدد وش المشكلة بالضبط. هل هي في الهجوم ولا الدفاع؟ ولا في التمركز ولا القرارات؟ كل شي له حل مختلف.",
         "أهلاً! وش تحتاج؟ عندي خبرة في كل شي روكيت ليق — روتنيشن، ميكانيك، إدارة بوست، تحليل ريبلاي. قلي وش تبي بالضبط.",
         "بصفتي لاعب RLCS سابق، أقدر أقولك إن السؤال هذا يلامس موضوع كبير. أقترح تركز على جزئية وحدة: مثلاً تحسين التمركز الدفاعي. إذا تبغى تفاصيل أكثر قلي."
