@@ -505,84 +505,258 @@ const coachKnowledge = [
     }
 ];
 
-// ─── COACH MATCHER ─────────────────────────
-function findCoachResponse(input) {
-    const lower = input.toLowerCase();
-    let bestMatches = [];
-    let bestScore = 0;
+// ─── COACH CONTEXT ─────────────────────────
+let coachContext = {
+    lastTopic: null,
+    lastResponse: null,
+    turnCount: 0,
+    askedForCodes: false
+};
+
+// ─── TEXT NORMALIZATION ────────────────────
+function normalize(text) {
+    let t = text.toLowerCase();
+    t = t.replace(/[إأآا]/g, "ا");
+    t = t.replace(/ى/g, "ي");
+    t = t.replace(/ة/g, "ه");
+    t = t.replace(/ِ|ُ|َ|ٌ|ٍ|ً/g, "");
+    return t;
+}
+
+function tokenize(text) {
+    return normalize(text).split(/\s+/).filter(w => w.length >= 2);
+}
+
+function getBigrams(words) {
+    const bigrams = [];
+    for (let i = 0; i < words.length - 1; i++) {
+        bigrams.push(words[i] + " " + words[i + 1]);
+    }
+    return bigrams;
+}
+
+function getTrigrams(words) {
+    const tri = [];
+    for (let i = 0; i < words.length - 2; i++) {
+        tri.push(words[i] + " " + words[i + 1] + " " + words[i + 2]);
+    }
+    return tri;
+}
+
+// ─── QUESTION WORD DETECTION ───────────────
+function detectQuestionType(text) {
+    const t = normalize(text);
+    if (/^(كيف|كيفيه|كيفية|طريقه|طريقة|وشلون)/.test(t)) return "how";
+    if (/^(وش|ماهو|ماهي|ما|منو|من)/.test(t)) return "what";
+    if (/^(ليش|ليه|لماذ)/.test(t)) return "why";
+    if (/^(عطيني|اعطيني|جيب|ورني|ارني|دلني)/.test(t)) return "give";
+    if (/^(هل|اذا|لو)/.test(t)) return "if";
+    if (/^(عندك|فيه|في)/.test(t)) return "have";
+    if (/^(اشرح|فسر|وضح|عرفني)/.test(t)) return "explain";
+    return "other";
+}
+
+// ─── COACH MATCHER (SMART) ─────────────────
+function findBestCategory(input) {
+    const norm = normalize(input);
+    const words = tokenize(input);
+    const bigrams = getBigrams(words);
+    const trigrams = getTrigrams(words);
+    const wordSet = new Set(words);
+
+    let best = { entry: null, score: -999, type: "none" };
+    let second = { entry: null, score: -999, type: "none" };
 
     for (const entry of coachKnowledge) {
         let score = 0;
-        for (const topic of entry.topics) {
-            if (lower.includes(topic.toLowerCase())) {
-                score += topic.length * 2;
-            }
-        }
-        // Also check word-by-word
-        const words = lower.split(/\s+/);
-        for (const word of words) {
-            if (word.length >= 2) {
-                for (const topic of entry.topics) {
-                    if (topic.toLowerCase().includes(word)) {
-                        score += 1;
-                    }
+        let matchCount = 0;
+
+        // 1) Trigrams (most specific) — massive weight
+        for (const tri of trigrams) {
+            for (const topic of entry.topics) {
+                if (normalize(topic).includes(tri)) {
+                    score += tri.length * 8;
+                    matchCount++;
                 }
             }
         }
-        if (score > bestScore) {
-            bestScore = score;
-            bestMatches = [entry];
-        } else if (score === bestScore && score > 0) {
-            bestMatches.push(entry);
+
+        // 2) Bigrams — high weight
+        for (const bi of bigrams) {
+            for (const topic of entry.topics) {
+                if (normalize(topic).includes(bi)) {
+                    score += bi.length * 5;
+                    matchCount++;
+                }
+            }
+        }
+
+        // 3) Full word matches — medium weight
+        for (const word of words) {
+            for (const topic of entry.topics) {
+                const tNorm = normalize(topic);
+                if (tNorm === word) {
+                    score += word.length * 4;
+                    matchCount++;
+                } else if (tNorm.includes(word) && word.length > 2) {
+                    score += 2;
+                    matchCount++;
+                } else if (word.includes(tNorm) && tNorm.length > 2) {
+                    score += 1;
+                    matchCount++;
+                }
+            }
+        }
+
+        // 4) Boost: topic name in user message
+        if (norm.includes(normalize(entry.name))) {
+            score += 30;
+            matchCount += 5;
+        }
+
+        // Penalize: if user explicitly mentions a different mode
+        if (entry.name === "الرياضة" && (norm.includes("دفاع") || norm.includes("مرمى") || norm.includes("save"))) {
+            score -= 5;
+        }
+        if (entry.name === "الدفاع" && (norm.includes("هجوم") || norm.includes("تسديد") || norm.includes("shot"))) {
+            score -= 3;
+        }
+
+        if (score > best.score) {
+            second = best;
+            best = { entry, score, matchCount };
+        } else if (score > second.score) {
+            second = { entry, score, matchCount };
+        }
+
+        // Track the first candidate for context
+        if (!best.entry && score > 0) {
+            best = { entry, score, matchCount };
         }
     }
 
-    if (bestScore > 0) {
-        const entry = bestMatches[Math.floor(Math.random() * bestMatches.length)];
-        const responses = entry.responses;
-        return responses[Math.floor(Math.random() * responses.length)];
+    // If scores are close and match counts differ, prefer the one with more matches
+    if (best.entry && second.entry && best.score - second.score < 5 && best.matchCount < second.matchCount) {
+        return second;
     }
 
-    // Fallback responses
-    const fallbacks = [
-        "سؤال ممتاز! خلني أوضح لك: روكيت ليق لعبة قرارات أكثر من ميكانيك. كل لعبه، اسأل نفسك: 'ليش سويت كذا؟' و 'وش كان ممكن اسوي احسن؟'. بهالطريقه بتتطور.",
+    return best;
+}
 
-        "صراحة، السؤال ذا يعتمد على مستواك حالياً. بس المبدأ واحد: ركز على شي واحد كل مرة. مثلاً هاليومين ركز على الـ recoveries وسرعة الرد بعد كل لمسة.",
+// ─── SMART FALLBACK ────────────────────────
+function smartFallback(input) {
+    const norm = normalize(input);
+    const words = tokenize(input);
 
-        "فيه طريقتين للعب: defensive و offensive. الأفضل تتعلم الاتنين. لكن إذا بتختار، ابدا defensive — لأن الدفاع اسهل تتعلمه و يخليك تفوز مباريات أكثر.",
+    // Check if it's about personal performance
+    if (words.some(w => ["ضعيف", "مستواي", "متطور", "تطوير", "اتحسن", "تحسنت", "مشكلتي", "غلطاتي", "اخطائي"].includes(w))) {
+        return "صراحة، مشكلتك مو في الميكانيك. مشكلتك في اتخاذ القرار. أكثر لاعبين يظنون أنهم بطيئين أو ما يلمسون الكورة — لكن الحقيقة إنهم في المكان الغلط.\n\nحلل ثلاث مباريات لعبك. شوف كل هدف دخل عليك: هل كان بسبب سوء تمركز؟ لو الجواب نعم — ركز اسبوع كامل على التمركز فقط. رح تتفاجأ بكم目标和 بتقل.";
+    }
 
-        "انا شفت لاعبين كثار في RLCS. اللي ينجحون هم اللي يشتغلون على نقاط ضعفهم. مو اللي يلعبون ١٠ ساعات نفس الغلط. حلل ريبلاي نفسك و بتعرف وش مشكلتك.",
+    // Asking about RLCS/pro players
+    if (words.some(w => ["rlcs", "محترف", "احتراف", "بطولة", "worlds", "pro", "zen", "vatira", "monkey", "beastmode", "firstkiller"].includes(w))) {
+        return "من وجهة نظري كلاعب RLCS سابق، الفرق بين المحترف والهاوي مو الميكانيك — الفرق في **الانتظام** (consistency). زن و فاتيرا يلعبون بنفس المستوى كل مباراة. ما عندهم مباراة سيئة.\n\nنصيحتي: شوف ريبلاي حق Zen من مباراة خسرها. شف كيف يتحرك تحت الضغط. المحترف ما يهلع — عنده خطة بديلة لكل موقف.";
+    }
 
-        "والله، المفتاح هو الـ consistency. مو لازم تكون سريع — خلك ثابت. لمسة وحدة مضبوطة احسن من ١٠ لمسات فاشلة. اشتغل على الـ first touch.",
+    // Asking about camera settings / controls
+    if (words.some(w => ["كاميرا", "camera", "اعدادات", "ضبط", "setting", "senstivity", "حساسية", "كنترول", "تحكم", "عصا", "controller"].includes(w))) {
+        return "الإعدادات شي شخصي. بس أقدر أعطيك إعداداتي اللي أوصلتني لـ RLCS:\n\n📷 **Camera:**\n• Distance: 270\n• Height: 90\n• Angle: -5\n• Stiffness: 0.45\n• Swivel Speed: 5.0\n• Transition Speed: 1.20\n\n🎮 **Controller:**\n• Steering Sens: 1.30\n• Aerial Sens: 1.30\n• Deadzone: 0.05 (ignore timing)\n• Dodge Deadzone: 0.60\n\nجربها وعدل عاللي يناسبك. أهم شي: لا تغير الإعدادات كل يوم — ثبتها و تعود عليها.";
+    }
 
-        "خليني اشرحها لك بطريقة بسيطة: كل ما زادت سرعتك في اللعبه، زادت أخطائك. حل المشكلة? اهدأ. العب ببطء و زيادة السرعة تدريجياً. السرعه تجي مع الوقت.",
+    // Asking about ranking up
+    if (words.some(w => ["رنك", "rank", "ترقية", "اطلع", "صاعد", "bronze", "silver", "gold", "platinum", "diamond", "champion", "gc", "ssl", "رتبه"].includes(w))) {
+        return "اللي يمنعك ترتفع مو مهارتك — وعيك بأخطائك. كل رتبة لها مشكلة:\n\n**Plat**: تلعب بسرعة بدون تفكير. اهدأ.\n**Diamond**: تطفش من الدفاع. العب أكثر خلف الكورة.\n**Champ**: قرارات سيئة تحت الضغط. خذ نفس.\n**GC**: still mechanical gaps.\n\nحدد رتبتك واشتغل على نقطة الضعف ذي بالذات — رح تطلع رنك.";
+    }
 
-        "فيهBase rule: لا تروح لمكان فيه زميلك. إذا شفت واحد من فريقك في منطقه، روح مكان ثاني. التوزيع الصحيح يربح المباريات.",
+    // Asking about specific mechanics
+    if (words.some(w => ["فليك", "flick", "فليب", "flip", "إيريال", "ايريال", "ايردربل", "دريبل", "wavedash", "speedflip", "half", "فلير", "reset"].includes(w))) {
+        return "أي ميكانيك في هاللعبة ينقسم لثلاث مراحل:\n1️⃣ **الفهم** — شوف كيف المحترف يسويها (فيديو يوتيوب)\n2️⃣ **التطبيق في free play** — كررها بدون ضغط ١٠ دقايق يومياً\n3️⃣ **التطبيق في المباراة** — جربها في مواقف منخفضة الخطورة\n\nأغلب الناس يطفرون من المرحلة ٢. لا تستعجل — كل ميكانيك يحتاج وقت.";
+    }
 
-        "اسمع من مجرب: الـ mechanics مو كل شي. أفضل لاعبين RLCS عندهم ذكاء لعبي عالي. يتوقعون الكورة قبل لا تصير. هذا يسمى prediction — و يتطور مع الخبره.",
+    // Generic improvement advice
+    if (words.some(w => ["اتطور", "تطوير", "تحسن", "اتحسن", "مستواي", "ضعيف"].includes(w))) {
+        return "أفضل طريقة تتحسن: حدد **مهارة واحدة** كل أسبوع.\n\nالأسبوع الأول: الـ recoveries (wavedash, half flip)\nالأسبوع الثاني: first touch و التحكم بالكرة\nالأسبوع الثالث: دقة التسديد\nالأسبوع الرابع: shadow defense\n\nكل يوم ١٥ دقيقة قبل الرانكد. شهر واحد فقط و رح تشوف فرق كبير.";
+    }
 
-        "أقوى شي تتعلمه: متى تترك الكوره. مو كل كوره لازم تلمسها. إذا الخصم اسرع منك — خل الكوره تروح و ركز على التمركز. الصبر يربح.",
-
-        "عندي لك تحدي: العب ١٠ مباريات و انت ما تستخدم boost زيادة عن ٥٠. بتكتشف انك تعتمد على boost زيادة عن اللزوم. boost استراتيجي مو عادة."
-    ];
-    return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+    return null;
 }
 
 // ─── COACH RESPONSE GENERATOR ──────────────
 function getCoachResponse(input) {
-    // Check for greetings
-    const lower = input.toLowerCase().trim();
-    const greetings = ["هلا", "هلو", "مرحبا", "هاي", "ها", "hi", "hello", "hey", "سلام", "مساء", "صباح", "اهلين", "مساء الخير", "السلام عليكم"];
-    if (greetings.some(g => lower.includes(g)) && lower.length < 15) {
-        return "وعليكم السلام! أنا جاهز — أسألني عن أي شي في روكيت ليق. روتنيشن؟ بوست؟ ميكانيك؟ ولا وش تبي بالضبط؟";
+    const lower = normalize(input.trim());
+    const words = tokenize(input);
+    coachContext.turnCount++;
+
+    // ── Pure greetings (short & direct) ──
+    const greetings = ["هلا", "هلو", "مرحبا", "هاي", "ها", "hi", "hello", "hey", "سلام", "اهلين", "مساء الخير", "السلام عليكم", "مساء", "صباح الخير", "هاي"];
+    if (words.length <= 3 && greetings.some(g => lower.includes(g))) {
+        return "وعليكم السلام! أهلاً بك. أنا جاهز لأي سؤال — روتنيشن، ميكانيك، بوست، تدريب، أو تحليل. وش عندك؟";
     }
 
-    const thanks = ["شكرا", "يسلمو", "تسلم", "thx", "thanks", "thank", "نعم", "تمام"];
-    if (thanks.some(g => lower.includes(g)) && lower.length < 12) {
-        return "العفو! تذكر: التطور يحتاج وقت. كل مباراة درس. و إذا عندك سؤال ثاني — أنا هنا. شد حيلك و بتوصل GC قريباً 💪";
+    // ── Thanks & farewells ──
+    const thanks = ["شكرا", "يسلمو", "تسلم", "thx", "thanks", "thank", "يعطيك", "الله يعافيك", "ما قصرت"];
+    if (words.length <= 4 && thanks.some(g => lower.includes(g)) && !lower.includes("سؤال")) {
+        const farewells = [
+            "العفو! أي وقت. شد حيلك و بتوصل GC قريباً 💪",
+            "الله يسلمك! إذا احتجت شي ثاني — أنا موجود.",
+            "على الرحب والسعة! تذكّر: التطور يحتاج صبر. كل مباراة درس جديد.",
+            "تقدّر بالخدمة! لا تنسى تسوي تحليل ريبلاي لنفسك — كل اسبوع مرة.",
+            "العفو! واذا تبغى كودات تدريب لمهارة معينة — قلي وش تحتاج."
+        ];
+        return farewells[Math.floor(Math.random() * farewells.length)];
     }
 
-    return findCoachResponse(input);
+    // ── Follow-up chatter ──
+    const affirmatives = ["نعم", "اي", "ايه", "yes", "yeah", "يب", "ok", "اوكي", "تم", "طيب"];
+    if (words.length <= 3 && affirmatives.some(a => lower.includes(a))) {
+        const followups = [
+            "تمام! جرب الكلام اللي قلته لك و ارجع لي بخبر.",
+            "كويس! عندك سؤال ثاني ولا شيء؟",
+            "حلو. خلني أضيف: أهم شي الاستمرارية. كل يوم شوي — مو مرة في الأسبوع كثير.",
+            "ممتاز! إذا تبغى شيء محدد — روتنيشن، ميكانيك، تدريب — قلي."
+        ];
+        return followups[Math.floor(Math.random() * followups.length)];
+    }
+
+    // ── Ask about replay analysis (from the RL Analyzer results) ──
+    if (lower.includes("ريبلاي") || lower.includes("تحليل") || lower.includes("نصائح") || lower.includes("نتايج") || lower.includes("نتائج")) {
+        if (lower.includes("نصائح") || lower.includes("شفت")) {
+            return "نعم شفت التحليل. الأرقام مو كذب — اللي يبين من إحصائياتك:\n\nإذا **سرعة البوست** أقل من ٣٠ → تركز على جمع boost أكثر من اللعب. إذا **نسبة الدقة** أقل من ٢٠٪ مع محاولات كثيرة — تسدد من زوايا صعبة. إذا **السرعة المتوسطة** أقل من ١٥٠٠ — تتحرك ببطء.\n\nوش تبغى أركز عليه بالضبط؟";
+        }
+        return "حللنا الريبلاي حقك. الأرقام تتكلم. بس التحليل الحقيقي يكون لما تشوف الريبلاي بنفسك بنظرة ثالثة. ركز على:\n1️⃣ أول ٣ ثواني بعد ما تلمس الكورة — وين تروح؟\n2️⃣ الـ double commits — كم مرة لعبت وانت ورا زميلك؟\n3️⃣ كل هدف دخل عليك — ويش كان المفروض تسوي بدال اللي سويت؟\n\nجرب ذي الطريقة و رح تكتشف أخطاء ما كنت منتبه لها.";
+    }
+
+    // ── Smart fallback before KB lookup (covers personal questions) ──
+    const smart = smartFallback(input);
+    if (smart) return smart;
+
+    // ── Knowledge Base matching ──
+    const result = findBestCategory(input);
+    if (result.entry && result.score > 0) {
+        coachContext.lastTopic = result.entry;
+        const responses = result.entry.responses;
+        // Rotate responses if possible to avoid same reply twice
+        let idx = Math.floor(Math.random() * responses.length);
+        if (responses.length > 1) {
+            while (responses[idx] === coachContext.lastResponse && responses.length > 1) {
+                idx = (idx + 1) % responses.length;
+            }
+        }
+        coachContext.lastResponse = responses[idx];
+        return responses[idx];
+    }
+
+    // ── Ultra fallback: analyze question words ──
+    const qType = detectQuestionType(input);
+    const ulf = [
+        "صراحةً، سؤالك يحتاج تفصيل. وش بالضبط اللي تبغى تعرفه؟ مثلاً: روتنيشن ولا ميكانيك ولا تدريب؟.",
+        "سؤال ممتاز. بس عشان أجاوب بدقة: هل تقصد في 1v1 ولا 2v2 ولا 3v3؟ كل طور له أسلوب مختلف.",
+        "فكرت في هالسؤال من زمان. الإجابة المختصرة: ركز على الأساسيات. إجابة كاملة: وش بالضبط مستواك الحالي وراح أعطيك خطة مخصصة.",
+        "أقدر أفيدك بشرط: حدد وش المشكلة بالضبط. هل هي في الهجوم ولا الدفاع؟ ولا في التمركز ولا القرارات؟ كل شي له حل مختلف.",
+        "أهلاً! وش تحتاج؟ عندي خبرة في كل شي روكيت ليق — روتنيشن، ميكانيك، إدارة بوست، تحليل ريبلاي. قلي وش تبي بالضبط.",
+        "بصفتي لاعب RLCS سابق، أقدر أقولك إن السؤال هذا يلامس موضوع كبير. أقترح تركز على جزئية وحدة: مثلاً تحسين التمركز الدفاعي. إذا تبغى تفاصيل أكثر قلي."
+    ];
+    return ulf[Math.floor(Math.random() * ulf.length)];
 }
 
 // ─── COACH UI ──────────────────────────────
