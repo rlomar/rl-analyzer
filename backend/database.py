@@ -143,8 +143,8 @@ def save_replay(replay_data, game_mode, players_analysis):
             s["count_powerslide"], s["goals_against_last_defender"],
         ))
 
-        if game_mode == "scrim":
-            _save_team_stats(cursor, replay_pk, replay_data, players_analysis)
+    if game_mode == "scrim":
+        _save_team_stats(cursor, replay_pk, replay_data, players_analysis)
 
     conn.commit()
     conn.close()

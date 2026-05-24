@@ -244,12 +244,15 @@ function renderTeamAnalysis(teamData) {
     for (const key of ["blue", "orange"]) {
         const t = teamData[key];
         if (!t) continue;
-        const resultClass = t.won ? "team-won" : "team-lost";
+        const won = t.goals > t.opponent_goals;
+        const drawn = t.goals === t.opponent_goals;
+        const resultClass = drawn ? "team-drawn" : (won ? "team-won" : "team-lost");
+        const icon = won ? "✅" : (drawn ? "⚖️" : "❌");
         html += `
         <div class="team-card ${resultClass}">
             <div class="team-header">
                 <span class="team-name" style="color:${key === "blue" ? "#4a9eff" : "#ff8c33"}">${t.name}</span>
-                <span class="team-result">${t.goals} - ${t.opponent_goals} ${t.won ? "✅" : "❌"}</span>
+                <span class="team-result">${t.goals} - ${t.opponent_goals} ${icon}</span>
             </div>
             <div class="team-stats">
                 <div class="team-stat"><span class="label">🚀 سرعة الفريق</span><span class="value">${t.avg_speed}</span></div>

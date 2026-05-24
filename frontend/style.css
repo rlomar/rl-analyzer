@@ -492,6 +492,10 @@ h1 span {
     border-right: 4px solid #ff1744;
 }
 
+.team-card.team-drawn {
+    border-right: 4px solid #ffab00;
+}
+
 .team-header {
     display: flex;
     justify-content: space-between;
