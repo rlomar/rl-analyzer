@@ -5,7 +5,10 @@ from analyzer import RocketLeagueAnalyzer
 from database import init_db, save_replay, get_player_history, get_player_names
 from trends import analyze_trends, generate_scrim_team_analysis
 
-app = Flask(__name__, static_folder="../frontend", static_url_path="")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
+
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
 CORS(app)
 
 UPLOAD_FOLDER = tempfile.gettempdir()
@@ -166,11 +169,11 @@ def api_trends(player_name):
 
 @app.route("/")
 def index():
-    return send_from_directory("../frontend", "index.html")
+    return send_from_directory(FRONTEND_DIR, "index.html")
 
 @app.route("/<path:path>")
 def static_files(path):
-    return send_from_directory("../frontend", path)
+    return send_from_directory(FRONTEND_DIR, path)
 
 if __name__ == "__main__":
     print("=" * 50)
