@@ -12,6 +12,8 @@ class RocketLeagueAnalyzer:
             tips = self._generate_tips(analysis)
             results.append({
                 "name": p["name"],
+                "team": p["team"],
+                "team_key": p["team_key"],
                 "stats": analysis,
                 "tips": tips
             })

@@ -123,16 +123,26 @@ function showResults(data) {
         ${game.overtime ? `<div class="game-stat"><span class="label">⏱</span><span class="value" style="color:#ff1744">وقت إضافي!</span></div>` : ""}
     `;
 
+    // Trends
+    const trends = data.trends || {};
+    renderTrends(trends);
+
+    // Players
     let html = "";
     players.forEach((p, i) => {
         const s = p.stats;
-        const tc = i < 2 ? "blue" : "orange";
+        const tc = p.team_key || (i < 2 ? "blue" : "orange");
+        const pTrends = trends[p.name];
         html += `
         <div class="player-card team-${tc}">
             <div class="player-header">
                 <span class="player-name">${p.name}</span>
                 <span class="team-badge ${tc}">${tc === "blue" ? "الأزرق" : "البرتقالي"}</span>
             </div>
+            ${pTrends && pTrends.insights && pTrends.insights.length ? `
+            <div class="trends-mini">
+                ${pTrends.insights.map(i => `<span class="trend-insight">${i}</span>`).join("")}
+            </div>` : ""}
             <div class="stats-grid">
                 <div class="stat-item"><span class="stat-label">⚽ أهداف</span><span class="stat-value">${s.goals}</span></div>
                 <div class="stat-item"><span class="stat-label">🎯 تمريرات</span><span class="stat-value">${s.assists}</span></div>
@@ -178,10 +188,137 @@ function showResults(data) {
                     </div>
                 `).join("")}
             </div>
+            <button class="btn btn-sm btn-history" onclick="loadPlayerHistory('${p.name}')">📜 سجل ${p.name}</button>
         </div>`;
     });
     document.getElementById("players-results").innerHTML = html;
+
+    // Team analysis (scrim)
+    if (data.team_analysis) {
+        renderTeamAnalysis(data.team_analysis);
+    }
+
+    // Load history for first player
+    if (players.length > 0) {
+        loadPlayerHistory(players[0].name);
+    }
+
     resultsSection.scrollIntoView({ behavior: "smooth" });
+}
+
+function renderTrends(trends) {
+    const section = document.getElementById("trends-section");
+    const names = Object.keys(trends);
+    if (!names.length) { section.classList.add("hidden"); return; }
+
+    let cards = "";
+    for (const name of names) {
+        const t = trends[name];
+        if (!t.insights || !t.insights.length) continue;
+        cards += `
+        <div class="trends-card">
+            <div class="trends-player-name">📈 ${name} — ${t.games_analyzed} مباريات</div>
+            <div class="trends-insights">
+                ${t.insights.map(i => `<div class="trend-insight">${i}</div>`).join("")}
+            </div>
+        </div>`;
+    }
+
+    if (cards) {
+        section.innerHTML = `
+            <div class="card">
+                <h2>📊 تطور المستوى</h2>
+                <div class="trends-grid">${cards}</div>
+            </div>`;
+        section.classList.remove("hidden");
+    } else {
+        section.classList.add("hidden");
+    }
+}
+
+function renderTeamAnalysis(teamData) {
+    const section = document.getElementById("team-section");
+    section.classList.remove("hidden");
+
+    let html = '<div class="card"><h2>🏆 تحليل الفريق — سكريم</h2><div class="team-grid">';
+    for (const key of ["blue", "orange"]) {
+        const t = teamData[key];
+        if (!t) continue;
+        const resultClass = t.won ? "team-won" : "team-lost";
+        html += `
+        <div class="team-card ${resultClass}">
+            <div class="team-header">
+                <span class="team-name" style="color:${key === "blue" ? "#4a9eff" : "#ff8c33"}">${t.name}</span>
+                <span class="team-result">${t.goals} - ${t.opponent_goals} ${t.won ? "✅" : "❌"}</span>
+            </div>
+            <div class="team-stats">
+                <div class="team-stat"><span class="label">🚀 سرعة الفريق</span><span class="value">${t.avg_speed}</span></div>
+                <div class="team-stat"><span class="label">⛽ boost</span><span class="value">${t.avg_boost}</span></div>
+                <div class="team-stat"><span class="label">🎯 تسديدات</span><span class="value">${t.total_shots}</span></div>
+                <div class="team-stat"><span class="label">🛑 تصديات</span><span class="value">${t.total_saves}</span></div>
+                <div class="team-stat"><span class="label">🎯 تمريرات</span><span class="value">${t.total_assists}</span></div>
+                <div class="team-stat"><span class="label">💥 ديمو</span><span class="value">${t.demos_inflicted}</span></div>
+                <div class="team-stat"><span class="label">📍 مسافة للكرة</span><span class="value">${t.avg_distance_ball}</span></div>
+                <div class="team-stat"><span class="label">👥 تماسك الفريق</span><span class="value">${t.avg_distance_mates}</span></div>
+                <div class="team-stat"><span class="label">⭐ مجموع سكور</span><span class="value">${t.total_score}</span></div>
+            </div>
+            <div class="tips-section">
+                <h3>💡 نصائح الفريق</h3>
+                ${t.tips.map(tip => `
+                    <div class="tip-card priority-${tip.priority}">
+                        <div class="tip-header">
+                            <span class="tip-title">${tip.title}</span>
+                            <span class="tip-priority ${tip.priority}">${tip.priority === "high" ? "🚨 مهم" : tip.priority === "medium" ? "⚡ متوسط" : "✅ ممتاز"}</span>
+                        </div>
+                        <p class="tip-advice">${tip.advice}</p>
+                    </div>
+                `).join("")}
+            </div>
+        </div>`;
+    }
+    html += '</div></div>';
+    section.innerHTML = html;
+}
+
+function loadPlayerHistory(playerName) {
+    const section = document.getElementById("history-section");
+    const content = document.getElementById("history-content");
+    fetch(`/api/history/${encodeURIComponent(playerName)}?mode=${gameMode}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.history || !data.history.length) {
+                section.classList.add("hidden");
+                return;
+            }
+            section.classList.remove("hidden");
+            const h = data.history;
+            let rows = h.map((g, i) => {
+                const won = (g.team === "blue" && g.blue_goals > g.orange_goals) || (g.team === "orange" && g.orange_goals > g.blue_goals);
+                const drawn = g.blue_goals === g.orange_goals;
+                return `
+                <tr>
+                    <td>#${h.length - i}</td>
+                    <td>${g.map_name || "-"}</td>
+                    <td>${g.goals} / ${g.assists} / ${g.saves}</td>
+                    <td>${g.shooting_pct}%</td>
+                    <td>${g.boost_avg}</td>
+                    <td>${g.score}</td>
+                    <td style="color:${won ? "#00c853" : drawn ? "#ffab00" : "#ff1744"}">${won ? "فوز" : drawn ? "تعادل" : "خسارة"}</td>
+                    <td style="font-size:12px;color:#5a6a8a">${g.uploaded_at ? g.uploaded_at.slice(0, 10) : "-"}</td>
+                </tr>`;
+            }).join("");
+            content.innerHTML = `
+                <p style="margin-bottom:10px;color:#8892b0">آخر ${h.length} مباريات — ${playerName}</p>
+                <div class="table-wrap">
+                    <table class="history-table">
+                        <thead><tr>
+                            <th>#</th><th>الخريطة</th><th>أهداف/تمرير/تصدي</th><th>دقة</th><th>boost</th><th>سكور</th><th>نتيجة</th><th>التاريخ</th>
+                        </tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+        })
+        .catch(() => section.classList.add("hidden"));
 }
 
 function showError(msg) {
