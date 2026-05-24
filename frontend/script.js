@@ -627,41 +627,91 @@ function findBestCategory(input) {
     return best;
 }
 
-// ─── FALLBACK HANDLERS ───────────────────
-function coachGreeting(input) {
-    const g = ["هلا", "هلو", "مرحبا", "هاي", "hi", "hello", "hey", "سلام", "اهلين", "السلام عليكم", "مساء", "صباح"];
-    const norm = coachNorm(input.trim());
-    const words = coachWords(input);
-    if (words.length <= 3 && g.some(x => coachNorm(x) === norm || norm.startsWith(coachNorm(x)))) {
-        return true;
-    }
-    return false;
+// ─── INPUT ANALYSIS ──────────────────────
+function analyzeInput(text) {
+    const norm = coachNorm(text);
+    const words = coachWords(text);
+    const shortWords = text.split(/\s+/).filter(w => w.length >= 1);
+
+    const frustration = words.some(w => ["زعلان", "متضايق", "خسرت", "تعبان", "طفشت", "ملل", "ضيق", "غاضب", "غضبان", "خسارة", "مستاء", "خايس", "خايص", "سيء", "سئمت", "عجزت", "ماحب"].includes(w));
+    const excitement = words.some(w => ["فزت", "حلو", "جميل", "رائع", "روعة", "ممتاز", "فخور", "انتصار", "ناس", "جامد", "نار", "ناري", "مبسوط", "فرحت", "استمتعت"].includes(w));
+    const seekingOpinion = words.some(w => ["رأيك", "تعتقد", "تظن", "تشوف", "برأيك", "وجهة نظر", "قل", "برأي"].includes(w));
+    const aboutSelf = words.some(w => ["أنا", "انا", "عمري", "عمري", "قريت", "شفت", "سمعت", "جربت", "سويت", "لعبت", "صرلي", "صار", "قاعد", "قاعد"].includes(w));
+    const disagree = words.some(w => ["غلط", "خطأ", "لا", "مو", "مش", "كذب", "غباء", "متفق", "اتفق"].includes(w));
+
+    return { frustration, excitement, seekingOpinion, aboutSelf, disagree, norm, words, shortWords };
 }
 
-function coachThanks(input) {
-    const t = ["شكرا", "يسلمو", "تسلم", "thx", "thanks", "thank", "يعطيك", "ما قصرت"];
-    const norm = coachNorm(input.trim());
-    const words = coachWords(input);
-    if (words.length <= 3 && t.some(x => coachNorm(x) === norm || norm.startsWith(coachNorm(x)))) {
-        return true;
-    }
-    return false;
-}
+// ─── CONVERSATIONAL FALLBACK ─────────────
+function conversationalFallback(input, analysis) {
+    const { frustration, excitement, seekingOpinion, aboutSelf, disagree } = analysis;
 
-function coachAffirm(input) {
-    const a = ["نعم", "اي", "ايه", "yes", "yeah", "يب", "ok", "اوكي", "تم", "طيب"];
-    const norm = coachNorm(input.trim());
-    const words = coachWords(input);
-    if (words.length <= 2 && a.some(x => coachNorm(x) === norm || norm.startsWith(coachNorm(x)))) {
-        return true;
+    // ── Frustrated / tilted ──
+    if (frustration) {
+        return [
+            "أحسك متضايق شوي. صدقني كلنا نمر بهالمرحلة. الـ tilt يخليك تسوي قرارات غلط بدون ما تدري. خذ استراحة ١٠ دقايق، امشي، ارجع هادئ — بتلعب أفضل.",
+            "أتفهم شعورك. روكيت ليق لعبة صعبة لأن الأخطاء تبان قوي. بس تذكر: كل خسارة درس. شوف الريبلاي، وش اللي ضيع المباراة؟ ركز على شيء واحد واطوره.",
+            "الخسارة مو نهاية العالم. أنا خسرت مباريات كثيرة في الـ RLCS وتعلمت منها أكثر من اللي فزت فيها. اللي يميز المحترف إنه يتعلم من الخسارة مو إنه يتأثر."
+        ][Math.floor(Math.random() * 3)];
     }
-    return false;
+
+    // ── Excited / hyped ──
+    if (excitement) {
+        return [
+            "ايوا! كذا اللعب! الفرحة هذي هي سبب حبنا للعبة. بس تذكر: لا توقف على هالانتصار — استمر، حافظ على هالطاقة واستخدمها عشان تطور أكثر.",
+            "ممتاز! الفوز جميل لكن لا يخليك تغتر. حافظ على تواضعك و استمر تتعلم. الفرق بين لاعب كويس ولاعب محترف هو الاستمرارية.",
+            "هذا الكلام يسعدني! تأكد إنك تحتفل بانتصاراتك — حتى الصغيرة. كل هدف يتعلم منه، كل مباراة تطورك."
+        ][Math.floor(Math.random() * 3)];
+    }
+
+    // ── Talking about self / story ──
+    if (aboutSelf) {
+        return [
+            "صراحة، كل لاعب عنده قصته. اللي مهم إنك تحافظ على شغفك. روكيت ليق لعبة تتعلمها يوم بعد يوم. أهم شيء: لا تقارن نفسك بالثانيين — ركز على تطورك أنت.",
+            "من كلامك أحسك لاعب شغوف. هذا أجمل شي. تذكر إن المهارات تاخذ وقت — حتى Zen ما صار Zen بين ليلة وضحاها. العب بذكاء مو بسرعة.",
+            "كل لاعب عنده نقاط قوة ونقاط ضعف. انت وش تشوف أقوى شيء فيك؟ ركز عليه وطوره — الباقي بيج مع الوقت."
+        ][Math.floor(Math.random() * 3)];
+    }
+
+    // ── Seeking opinion ──
+    if (seekingOpinion) {
+        return [
+            "من وجهة نظري كلاعب RLCS سابق، الرأي الحقيقي يبان في أرض الملعب. أقدر أقولك إن المهارات الفردية مهمة بس التوافق مع الفريق هو اللي يربح البطولات. وش رأيك أنت؟",
+            "أنا أؤمن بشيء واحد: اللعبة ما توقف على حركة وحدة. فيه مليون طريقة تلعب. اللي يناسب غيرك مو دايم يناسبك. جرب، أخطأ، تعلم — هذي طريق التطور.",
+            "بكل صراحة: روكيت ليق مو لعبة ميكانيك بس — ٦٠٪ قرارات و٤٠٪ تنفيذ. إذا تعلمت تقرأ اللعبة صح، نص المشوار قطعته."
+        ][Math.floor(Math.random() * 3)];
+    }
+
+    // ── Disagreeing ──
+    if (disagree) {
+        return [
+            "ممكن عندك وجهة نظر مختلفة، وهذا شي جميل. النقاش يولد أفكار جديدة. أنا أتكلم من خبرتي، بس كل واحد له أسلوبه. جرب تشوف وش يناسبك، وإذا لقيت شي أفضل — علمني.",
+            "الصراحة أحترم إنك ما تتفق. اللعبة فيها أكثر من طريقة. أنا أعطيك نصائح من تجربتي، لكن في النهاية اللي يقرر هو أسلوبك. جرب وقرر بنفسك."
+        ][Math.floor(Math.random() * 2)];
+    }
+
+    // ── General chat / anything else ──
+    const general = [
+        "والله كلامك ذكرني بأيام الـ RLCS. أفتقد أجواء البطولات — الضغط، الجمهور، التنافس. روكيت ليق مو مجرد لعبة، أسلوب حياة. وش أكثر شيء تحبه فيها؟",
+        "أحياناً أفضل شي تسويه هو توقف و تفكر: ليش أنا لاعب هاللعبة؟ إذا كان الجواب لأني أستمتع — فأنت في الطريق الصحيح. الاستمتاع يخليك تتطور بدون ما تحس.",
+        "صدقني، أكثر لحظاتي إلهامًا في روكيت ليق كانت وأنا في free play. مش ضروري دايماً تكون في مباراة — خذ وقتك مع الكورة، جرب حركات جديدة، اطلع من منطقة الراحة.",
+        "فيه مقولة belovedة في المجتمع: 'حط الكورة في المرمى'. مبسّطة، بس فيها كل شي. لا تعقد الأمور — ركز على الأساسيات و الباقي بيجي.",
+        "أعظم لاعبين روكيت ليق ما أوصلوا بالميكانيك فقط — وصلوا لأنهم يفكرون أسرع من خصومهم. الخطوة الجاية: ارفع سرعة تفكيرك. شوف الكورة، اقرأ اللعبة، تحرك.",
+        "أقوى نصيحة أقدر أعطيها لأي لاعب: لا تخاف تخطئ. كل خطأ تتعلم منه يرفع مستواك. المشكلة الوحيدة هي إنك تكرر نفس الخطأ بدون ما تاخذ العبرة.",
+        "عندي قناعة: كل مباراة خسرتها في الـ RLCS علمتني أكثر من أي مباراة فزت فيها. الخسارة تظهر نقاط ضعفك، والفوز يخبيها. حلل خسائرك — بتتطور بسرعة.",
+        "مافي شي اسمه 'موهبة فطرية' في روكيت ليق. كل المحترفين تدربوا آلاف الساعات. الفرق بينك وبينهم: ساعات التدريب الواعي. العب بهدف، ليس عشان تخلص المباراة.",
+        "خلني أقولك سر: السرعة مو دايماً الحل. أبطأ شوي، فكر، و نفذ بدقة. لاعب بطيء وذكي يغلب لاعب سريع وغبي ٩ مرات من ١٠.",
+        "تخيل إن كل مباراة رانكد هي تمرين. ما فيها شي تخسره إلا نقاط — و النقاط ترجع. لكن الخبرة و المهارة اللي تاخذها من المباراة تبقى معك للأبد.",
+        "الـ Rocket League زي الشطرنج بالسرعة. لازم تفكر بخطوتين قدام. وين بتروح الكورة؟ وين راح يكون الخصم؟ وين زميلك؟ هذي الأسئلة هي اللي تفرق."
+    ];
+    return general[Math.floor(Math.random() * general.length)];
 }
 
 // ─── MAIN COACH RESPONSE ─────────────────
 function getCoachResponse(input) {
     const text = input.trim();
     if (!text) return "";
+    const analysis = analyzeInput(text);
 
     // ── Step 1: Check for "how to improve at X" and route to specific topic ──
     const improveTopic = parseImproveQuery(text);
@@ -672,50 +722,46 @@ function getCoachResponse(input) {
             const idx = Math.floor(Math.random() * responses.length);
             return responses[idx];
         }
-        // If no specific topic matched, fall through
     }
 
-    // ── Step 2: KB category matching ──
+    // ── Step 2: KB category matching — any match, even weak ──
     const result = findBestCategory(text);
-    if (result.entry && result.score > 3) {
+    if (result.entry && result.score > 0) {
         const responses = result.entry.responses;
         const idx = Math.floor(Math.random() * responses.length);
         return responses[idx];
     }
 
-    // ── Step 3: Pure greetings (no KB match) ──
-    if (coachGreeting(text)) {
+    // ── Step 3: Pure greetings ──
+    const greetWords = ["هلا", "هلو", "مرحبا", "هاي", "hi", "hello", "hey", "سلام", "اهلين", "السلام عليكم", "مساء", "صباح"];
+    const n = coachNorm(text);
+    const w = coachWords(text);
+    if (w.length <= 3 && greetWords.some(g => coachNorm(g) === n || n.startsWith(coachNorm(g)))) {
         return "وعليكم السلام! أنا جاهز لأي سؤال — روتنيشن، ميكانيك، بوست، تدريب، أو تحليل. وش عندك؟";
     }
 
     // ── Step 4: Thanks / farewell ──
-    if (coachThanks(text)) {
-        const r = [
+    const thanksWords = ["شكرا", "يسلمو", "تسلم", "thx", "thanks", "thank", "يعطيك", "ما قصرت"];
+    if (w.length <= 3 && thanksWords.some(t => coachNorm(t) === n || n.startsWith(coachNorm(t)))) {
+        return [
             "العفو! إذا احتجت شي ثاني أنا موجود. شد حيلك و بتوصل GC قريباً",
             "الله يسلمك! تذكّر: التطور يحتاج صبر. كل مباراة درس جديد",
             "على الرحب والسعة! لا تنسى تسوي تحليل ريبلاي لنفسك كل اسبوع"
-        ];
-        return r[Math.floor(Math.random() * r.length)];
+        ][Math.floor(Math.random() * 3)];
     }
 
     // ── Step 5: Short affirmative follow-up ──
-    if (coachAffirm(text)) {
-        const r = [
+    const affirmWords = ["نعم", "اي", "ايه", "yes", "yeah", "يب", "ok", "اوكي", "تم", "طيب"];
+    if (w.length <= 2 && affirmWords.some(a => coachNorm(a) === n || n.startsWith(coachNorm(a)))) {
+        return [
             "تمام! جرب الكلام اللي قلته لك و ارجع لي بخبر",
             "كويس! عندك سؤال ثاني؟",
             "حلو. خلني أضيف: أهم شي الاستمرارية. كل يوم شوي — مو مرة في الأسبوع كثير"
-        ];
-        return r[Math.floor(Math.random() * r.length)];
+        ][Math.floor(Math.random() * 3)];
     }
 
-    // ── Step 6: Catch-all ──
-    const fallbacks = [
-        "صراحة، سؤالك يحتاج تفصيل. وش بالضبط اللي تبغى تعرفه؟ مثلاً: روتنيشن، ميكانيك، تدريب، أو بوست؟",
-        "سؤال ممتاز. بس عشان أجاوب بدقة: هل تقصد في 1v1 ولا 2v2 ولا 3v3؟ كل طور له أسلوب مختلف",
-        "أقدر أفيدك بشرط: حدد وش المشكلة بالضبط. هل هي في الهجوم ولا الدفاع؟ ولا في التمركز ولا القرارات؟",
-        "بصفتي لاعب RLCS سابق، أقدر أقولك إن السؤال هذا يلامس موضوع كبير. أقترح تركز على جزئية وحدة: مثلاً تحسين التمركز الدفاعي"
-    ];
-    return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+    // ── Step 6: Conversational fallback ──
+    return conversationalFallback(text, analysis);
 }
 
 // ─── COACH UI ────────────────────────────
