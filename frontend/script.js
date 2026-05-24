@@ -10,6 +10,26 @@ const resultsSection = document.getElementById("results-section");
 const errorSection = document.getElementById("error-section");
 const errorMessage = document.getElementById("error-message");
 
+const savedMode = localStorage.getItem("rl_game_mode") || "1v1";
+let gameMode = savedMode;
+
+document.querySelectorAll(".mode-option").forEach(el => {
+    if (el.dataset.mode === savedMode) {
+        el.classList.add("selected");
+        el.querySelector("input[type=radio]").checked = true;
+    }
+});
+
+document.querySelectorAll(".mode-option").forEach(el => {
+    el.addEventListener("click", () => {
+        document.querySelectorAll(".mode-option").forEach(o => o.classList.remove("selected"));
+        el.classList.add("selected");
+        el.querySelector("input[type=radio]").checked = true;
+        gameMode = el.dataset.mode;
+        localStorage.setItem("rl_game_mode", gameMode);
+    });
+});
+
 const savedKey = localStorage.getItem("rl_api_key");
 if (savedKey) {
     apiInput.value = savedKey;
@@ -68,6 +88,7 @@ function handleFile(file) {
     }
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("game_mode", gameMode);
     dropZone.classList.add("hidden");
     uploadStatus.classList.remove("hidden");
     fetch(API_URL, { method: "POST", body: formData })

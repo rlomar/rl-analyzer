@@ -26,6 +26,8 @@ def analyze_replay():
         return jsonify({"error": "ما رفعت ملف"}), 400
 
     file = request.files["file"]
+    game_mode = request.form.get("game_mode", "3v3")
+
     if not file.filename.lower().endswith(".replay"):
         return jsonify({"error": "الملف لازم يكون .replay"}), 400
 
@@ -67,7 +69,7 @@ def analyze_replay():
                 if data.get("status") == "ok" or "goals" in data.get("blue", {}):
                     break
 
-        analyzer = RocketLeagueAnalyzer(data)
+        analyzer = RocketLeagueAnalyzer(data, game_mode)
         results = analyzer.analyze()
 
         game_info = {

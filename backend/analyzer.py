@@ -1,6 +1,7 @@
 class RocketLeagueAnalyzer:
-    def __init__(self, data):
+    def __init__(self, data, game_mode="3v3"):
         self.data = data
+        self.game_mode = game_mode
         self.players = []
 
     def analyze(self):
@@ -493,7 +494,221 @@ class RocketLeagueAnalyzer:
                 "advice": f"{sco}. فيه أفضل."
             })
 
+        mode_tips = self._generate_mode_tips(a)
+        tips.extend(mode_tips)
+
         tips.sort(key=lambda t: {"high": 0, "medium": 1, "low": 2}[t["priority"]])
+
+        return tips
+
+    def _generate_mode_tips(self, a):
+        tips = []
+        gm = self.game_mode
+
+        if gm == "1v1":
+            pz = a["percent_zero_boost"]
+            if pz > 12:
+                tips.append({
+                    "type": "boost_zero", "priority": "high",
+                    "title": random_choice(["١v١ وفاضي بوست!", "ما ينفع في الفردي"]),
+                    "advice": f"{pz}% من وقتك فاضي. في 1v1 هذا انتحار — ما فيه زميل يغطيك. خذ small pads وريح بالك."
+                })
+
+            bh = a["time_behind_ball"]
+            ib = a["time_infront_ball"]
+            if bh > ib * 1.5:
+                tips.append({
+                    "type": "positioning", "priority": "high",
+                    "title": random_choice(["ورا الكرة في 1v1؟", "ما تخاف يتخطونك؟"]),
+                    "advice": "في الفردي إذا قعدت ورا الكرة بتتخطى بالأرض أو فوق راسك. تقدم وتحدى."
+                })
+
+            sp = a["shooting_pct"]
+            s = a["shots"]
+            if sp < 35 and s >= 2:
+                tips.append({
+                    "type": "shooting", "priority": "high",
+                    "title": random_choice(["١v١ وتبهدل تسديد!", "الفرص قليلة في 1v1"]),
+                    "advice": f"{sp}% دقة من {s} تسديدات. في 1v1 الفرص قليلة — كل تسديدة تهم. درب على finishing."
+                })
+
+            gal = a["goals_against_last_defender"]
+            if gal > 0:
+                tips.append({
+                    "type": "defense", "priority": "high",
+                    "title": random_choice(["يدخل عليك في 1v1", "Shadow defense فاشلة"]),
+                    "advice": f"دخل عليك {gal} أهداف وانت آخر رجل. في 1v1 shadow defense أساسي — لا تنقض على طول."
+                })
+
+            spd = a["avg_speed"]
+            if spd > 2100:
+                tips.append({
+                    "type": "speed", "priority": "medium",
+                    "title": random_choice(["سرعة في 1v1", "اهدأ شوي"]),
+                    "advice": f"سرعتك {spd}. في 1v1 السرعة الزايدة تخليك تفقد التحكم. خفف عشان المراوغة."
+                })
+
+            ba = a["boost_avg"]
+            if ba < 35:
+                tips.append({
+                    "type": "boost", "priority": "high",
+                    "title": random_choice(["١v١ بلا بوست?", "حكم على نفسك"]),
+                    "advice": f"{ba} معدل بوست. في 1v1 البوست هو كل شيء — إدارة boost أهم شيء في الفردي."
+                })
+
+            if a["percent_offensive"] < 25:
+                tips.append({
+                    "type": "positioning", "priority": "high",
+                    "title": random_choice(["دفاع في 1v1", "وش قاعده في منطقتك؟"]),
+                    "advice": f"{a['percent_offensive']}% هجوم بس. في 1v1 لازم تضغط — إذا قعدت في دفاعك بيضغطون عليك للغلط."
+                })
+
+        elif gm == "2v2":
+            dm = a["dist_mates"]
+            if dm > 2800:
+                tips.append({
+                    "type": "teamplay", "priority": "high",
+                    "title": random_choice(["بعيد عن زميلك في 2v2", "تلعب بمفردك"]),
+                    "advice": f"المسافة {dm}. في 2v2 التباعد الزايد يخليكم اثنين تلعبون فردي. قرب عشان الدعم."
+                })
+            elif dm < 600 and dm > 0:
+                tips.append({
+                    "type": "teamplay", "priority": "medium",
+                    "title": random_choice(["ملزق بزميلك", "ما تترك له مساحة"]),
+                    "advice": f"{dm} تبعد بس. في 2v2 لا تلزق — خذ مساحة عشان التغطية."
+                })
+
+            tf = a["time_offensive"]
+            td = a["time_defensive"]
+            if tf > td * 2:
+                tips.append({
+                    "type": "positioning", "priority": "high",
+                    "title": random_choice(["اتنينكم هجوم!", "فاكرها 1v1؟"]),
+                    "advice": "في 2v2 إذا اتحديت وزميلك وراك، المرمى فاضي. تأكد من Rotation."
+                })
+
+            di = a["demos_inflicted"]
+            dt = a["demos_taken"]
+            if di < 1 and dt > 2:
+                tips.append({
+                    "type": "demos", "priority": "medium",
+                    "title": random_choice(["ينديمونك في 2v2", "ديمو فري"]),
+                    "advice": f"أخذت {dt} ديمو وما سويت ولا واحد. في 2v2 الديمو يفتح مساحة — استعملها."
+                })
+
+            if a["count_powerslide"] > 15:
+                tips.append({
+                    "type": "mechanics", "priority": "medium",
+                    "title": random_choice(["Powerslide كثير", "يوصلها ويدور"]),
+                    "advice": f"{a['count_powerslide']} powerslide. في 2v2 التفاتة توديك ورا."
+                })
+
+            if a["goals_against_last_defender"] > 0:
+                tips.append({
+                    "type": "defense", "priority": "high",
+                    "title": random_choice(["آخر رجل ويدخلون", "دفاعك ضعيف"]),
+                    "advice": f"دخل عليك {a['goals_against_last_defender']} وانت آخر رجل. في 2v2 إذا تقدم زميلك دورك دفاع."
+                })
+
+        elif gm == "3v3":
+            of = a["percent_offensive"]
+            df = a["percent_defensive"]
+            if of > 50 and df < 15:
+                tips.append({
+                    "type": "positioning", "priority": "high",
+                    "title": random_choice(["ثالث رجل وينه؟", "كلكم هجوم!"]),
+                    "advice": f"هجوم {of}% دفاع {df}%. في 3v3 أحدكم لازم يكون ثالث رجل."
+                })
+
+            tm_back = a["time_most_back"]
+            tm_fwd = a["time_most_forward"]
+            if tm_fwd > tm_back * 3 and tm_back > 0:
+                tips.append({
+                    "type": "rotation", "priority": "high",
+                    "title": random_choice(["ما ترجع آخر رجل", "دورك ياخي"]),
+                    "advice": f"قدام {tm_fwd}ث ورا {tm_back}ث. في 3v3 الدوران أساسي — كل واحد له دور."
+                })
+
+            if a["dist_ball"] > 3500:
+                tips.append({
+                    "type": "pressure", "priority": "high",
+                    "title": random_choice(["بعيد في 3v3", "اضغط مع الفريق"]),
+                    "advice": f"تبعد {a['dist_ball']}. في 3v3 الضغط الجماعي يخلي الخصم يغلط."
+                })
+
+            di = a["demos_inflicted"]
+            if di < 1 and a["demos_taken"] > 2:
+                tips.append({
+                    "type": "demos", "priority": "medium",
+                    "title": random_choice(["يسحقونك ديمو", "حاول تدمّر"]),
+                    "advice": f"سويت {di} وأخذت {a['demos_taken']}. في 3v3 الديمو يفتح مساحة للهجمة."
+                })
+
+            if a["boost_stolen"] < 50 and a["boost_collected"] > 500:
+                tips.append({
+                    "type": "boost_steal", "priority": "medium",
+                    "title": random_choice(["يسرقون بوستكم", "لا تترك بوست للخصم"]),
+                    "advice": f"سرقت {a['boost_stolen']}. في 3v3 سرقة boost الخصم تضيق عليه."
+                })
+
+            if a["count_big_pads"] > 12:
+                tips.append({
+                    "type": "boost_pads", "priority": "medium",
+                    "title": random_choice(["تارك small pads", "تلف الدنيا عشان big"]),
+                    "advice": f"{a['count_big_pads']} big pad. في 3v3 لا تترك مركزك عشان big pad."
+                })
+
+        elif gm == "scrim":
+            dm = a["dist_mates"]
+            if dm > 2500:
+                tips.append({
+                    "type": "teamplay", "priority": "high",
+                    "title": random_choice(["سكريم وتبعد!", "Teamwork zero"]),
+                    "advice": f"المسافة {dm}. في سكريم التنسيق أهم شيء — قرب من زميلك عشان fast recovery."
+                })
+
+            if a["percent_zero_boost"] > 15:
+                tips.append({
+                    "type": "boost_zero", "priority": "high",
+                    "title": random_choice(["سكريم وفاضي", "غير مقبول"]),
+                    "advice": f"{a['percent_zero_boost']}% صفر boost. في سكريم المفروض تكون منظم — small pads دائماً."
+                })
+
+            if a["percent_defensive"] > 50:
+                tips.append({
+                    "type": "positioning", "priority": "high",
+                    "title": random_choice(["دفاع في سكريم", "لازم أدوار"]),
+                    "advice": f"{a['percent_defensive']}% دفاع. سكريم يعتمد على أدوار — إذا دورك هجوم تقدم."
+                })
+
+            if a["goals_against_last_defender"] > 0:
+                tips.append({
+                    "type": "defense", "priority": "high",
+                    "title": random_choice(["أهداف بدفاعك في سكريم", "ثغرة أمنية"]),
+                    "advice": f"{a['goals_against_last_defender']} أهداف. في سكريم كل غلطة تكلف — ركز على الباك بوست."
+                })
+
+            if a["count_big_pads"] > 10:
+                tips.append({
+                    "type": "boost_pads", "priority": "medium",
+                    "title": random_choice(["تطلع من المركز", "خلاصة السكريم"]),
+                    "advice": "في سكريم ما تترك مركزك عشان big pad — استعمل small pads وابقى في البلاي."
+                })
+
+            ba = a["boost_avg"]
+            if ba > 70 and a["shots"] < 3:
+                tips.append({
+                    "type": "general", "priority": "medium",
+                    "title": random_choice(["مخزن boost", "تخزين واستخدام?"]),
+                    "advice": f"بوست {ba} وتسلّمت {a['shots']} بس. boost مو للزينة — استعمله."
+                })
+
+            if a["goals"] == 0 and a["assists"] == 0:
+                tips.append({
+                    "type": "general", "priority": "high",
+                    "title": random_choice(["ما سويت شيء", "سكريم وغياب"]),
+                    "advice": "صفر أهداف وصفر تمريرات. في السكريم الكل يساهم — حتى لو ما تسجل ساعد."
+                })
 
         return tips
 

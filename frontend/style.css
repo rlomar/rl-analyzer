@@ -70,6 +70,78 @@ h1 span {
     backdrop-filter: blur(10px);
 }
 
+.mode-selector {
+    margin-bottom: 20px;
+}
+
+.mode-selector h3 {
+    font-size: 16px;
+    margin-bottom: 12px;
+    color: #fff;
+}
+
+.mode-options {
+    display: flex;
+    gap: 10px;
+}
+
+.mode-option {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.mode-option:hover {
+    border-color: rgba(0, 119, 255, 0.4);
+    background: rgba(0, 119, 255, 0.05);
+    transform: translateY(-2px);
+}
+
+.mode-option.selected {
+    border-color: #0078ff;
+    background: rgba(0, 119, 255, 0.12);
+    box-shadow: 0 4px 15px rgba(0, 119, 255, 0.2);
+}
+
+.mode-option .mode-icon {
+    font-size: 28px;
+    line-height: 1;
+}
+
+.mode-option .mode-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #8892b0;
+}
+
+.mode-option.selected .mode-label {
+    color: #fff;
+}
+
+@media (max-width: 500px) {
+    .mode-options {
+        gap: 6px;
+    }
+    .mode-option {
+        padding: 10px 4px;
+    }
+    .mode-option .mode-icon {
+        font-size: 22px;
+    }
+    .mode-option .mode-label {
+        font-size: 11px;
+    }
+}
+
 .drop-zone {
     border: 2px dashed rgba(0, 119, 255, 0.3);
     border-radius: 16px;
