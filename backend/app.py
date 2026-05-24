@@ -125,9 +125,9 @@ def analyze_replay():
             if summary:
                 trends_data[p["name"]] = summary
 
-        # Team analysis for scrim
+        # Team analysis for scrim / 3v3
         team_analysis = None
-        if game_mode == "scrim":
+        if game_mode in ("scrim", "3v3"):
             team_analysis = generate_scrim_team_analysis(results, game_info)
 
         return jsonify({

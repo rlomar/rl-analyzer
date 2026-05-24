@@ -240,7 +240,8 @@ function renderTeamAnalysis(teamData) {
     const section = document.getElementById("team-section");
     section.classList.remove("hidden");
 
-    let html = '<div class="card"><h2>🏆 تحليل الفريق — سكريم</h2><div class="team-grid">';
+    const modeLabel = gameMode === "scrim" ? "سكريم" : "3v3";
+    let html = `<div class="card"><h2>🏆 تحليل الفريق — ${modeLabel}</h2><div class="team-grid">`;
     for (const key of ["blue", "orange"]) {
         const t = teamData[key];
         if (!t) continue;
