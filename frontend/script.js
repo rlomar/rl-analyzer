@@ -339,41 +339,48 @@ function resetApp() {
     document.getElementById("file-input").value = "";
 }
 
-// ═══════════════════════════════════════════
-//  AI COACH — RLCS Pro Analyst Chat
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// AI COACH — Knowledge Base, Matcher, UI
+// ═══════════════════════════════════════════════
 
-// ─── COACH KNOWLEDGE BASE ──────────────────
 const coachKnowledge = [
     {
-        topics: ["روتنيشن", "روتيشن", "rotations", "دوران", "rotation"],
+        id: "rotations",
+        name: "روتنيشن",
+        topics: ["روتنيشن", "روتيشن", "rotations", "دوران"],
         responses: [
             "الروتنيشن هو أساس اللعب الجماعي. في 3v3، أفضّل نظام الـ 3 أدوار: 1 هجوم، 1 مساند، 1 دفاع. أبداً لا تجلس ورا زميلك نفس المنطقة — وزعوا المساحة. واهم شي: إذا زميلك رجع عنده boost قليل، اترك اللعبة وارجع بداله.",
-            "في 2v2، الفكرة أبسط: واحد هجوم وواحد دفاع. لا تهجم وزميلك وراك — معناها لو ضاع الكرة هدف مضمون. الـ shadow defense هنا أساسي: ارجع ورا الكرة شوي واقرأ تحركات الخصم بدال ما تنقض على كل شي.",
+            "في 2v2، الفكرة أبسط: واحد هجوم وواحد دفاع. لا تهجم وزميلك وراك — معناها لو ضاعت الكرة هدف مضمون. الـ shadow defense هنا أساسي: ارجع ورا الكرة شوي واقرأ تحركات الخصم بدال ما تنقض على كل شي.",
             "في 1v1 الروتنيشن مختلف — أنت اللاعب الوحيد. ركز على إنك ما تضيع boost بدون فايدة. اعطي نفسك مساحة وكمل البلاي بهدوء. السرعه مو دايم حل — اقرأ لعب الخصم.",
             "من خبرتي في الـ RLCS، الفرق المحترفة تمشي بقاعدة الـ spacing: بين كل لاعب والثاني مسافة سيارة ونص. إذا اقتربت أكثر من كذا، تخلي الدفاع مكشوف. تذكّر: الـ 3v3 مو لعبة فردية."
         ]
     },
     {
-        topics: ["boost", "بوست", "بست", "nitro", "fuel", "وقود", "nitro"],
+        id: "boost",
+        name: "بوست",
+        topics: ["boost", "بوست", "بست", "نيترو", "nitro", "وقود", "fuel"],
         responses: [
-            "إدارة البوست تفرق بين لاعب محترف ولاعب عادي. أول نصيحة: لا تستخدم boost عشان توصل للكرة لو هي رايحه للزميل — خلها. ثاني شي: اعرف مواقع البوستات الكبيرة (big pads) على الخريطة مثل ظهر يدك.",
-            "في الـ RLCS، أبطار البوست يحدد الفريق اللي يتحكم بالمباراة. لو boostك قليل، العب small pads بدال ما تروح big pad وتترك منطقتك. الـ small pads تعطيك 12 بوست وموزعة في كل مكان — استغلها.",
+            "إدارة البوست تفرق بين لاعب محترف ولاعب عادي. أول نصيحة: لا تستخدم boost عشان توصل للكرة لو هي رايحه للزميل — خلها. ثاني شي: اعرف مواقع البوستات الكبيرة على الخريطة مثل ظهر يدك.",
+            "في الـ RLCS، البوست يحدد الفريق اللي يتحكم بالمباراة. لو boostك قليل، العب small pads بدال ما تروح big pad وتترك منطقتك. الـ small pads تعطيك 12 بوست وموزعة في كل مكان — استغلها.",
             "النصيحة الذهبية: لا توصل لسرعة supersonic كل شوي. خفف زيادة boost عشان ما تضيعه. في الدفاع، حافظ على 30-40 بوست عشان تقدر تتصدى وترجع بسرعة.",
-            "سر boost أن تجمعه ذكياً: ارسم مسارك بين big pads و small pads. واهم شي — لا توقف عشان تجمع boost! تحرك ببطء وانت تجمعه عشان ما تخلي دفاعك فاضي."
+            "سر البوست أن تجمعه بذكاء: ارسم مسارك بين big pads و small pads. واهم شي — لا توقف عشان تجمع boost! تحرك ببطء وانت تجمعه عشان ما تخلي دفاعك فاضي."
         ]
     },
     {
-        topics: ["ميكانيك", "حركات", "ميكانيكا", "ميكانيكية", "فليك", "ايريال", "ايردربل", "ريسيت", "reset", "flip", "mechanics"],
+        id: "mechanics",
+        name: "ميكانيك",
+        topics: ["ميكانيك", "ميكانيكا", "ميكانيكية", "حركات", "فليك", "ايريال", "ايردربل", "دريبل", "ريسيت", "reset", "flip", "wave", "wavedash"],
         responses: [
             "الميكانيك مهم بس مو كل شي. في الـ RLCS، أبسط الحركات تنفع لو طبقتها بوقتها. ركّز على الأساسيات: الـ powerslide cut، الـ hook shot، و wave dash. هذي كافية توصل لـ GC.",
             "الـ flip reset حركة متقدمة — مرة حلوة بس مو ضرورية. شاهد كيف يطبقها Justin و Zen: بسيط و سلس. بس تذكر: ٩ من ١٠ مرات، الـ air dribble البسيط ينفع أكثر من الـ reset.",
-            "إذا تبغى تتطور في الميكانيك، سو التمرين ذا: كل يوم ١٠ دقائق free play. ركز على الـ fast aerial، الـ flick (front flip و 45 degree)، و الـ powershot. التكرار يخليها عادة.",
+            "إذا تبغى تتطور في الميكانيك، خصص ١٠ دقائق free play يومياً. ركز على: fast aerial، flick (front flip و 45 degree)، و powershot. التكرار يخليها عادة.",
             "الـ wavedash أساسي: استخدمه عشان تطلع من الحيطان بسرعة، وعشان توقف بدل ما تطفش بعد الهبوط. ضروري كل لاعب يتقنه.",
             "فيه فرق بين speed و mechanics. اتعلم تقرأ الكرة بدل ما تجري وراها بسرعه. السرعة الزايدة تخلي ميكانيكك غير مضبوط. خذ وقتك."
         ]
     },
     {
+        id: "positioning",
+        name: "تمركز",
         topics: ["مركز", "position", "تمركز", "مكان", "موقع", "positioning"],
         responses: [
             "التمركز الصحيح يخلي المباراة سهله. اتحرك على طول الخط الوهمي بين الكرة ومرماك. لا تقطع على زميلك ولا تتجمعون في زاويه وحده.",
@@ -383,24 +390,30 @@ const coachKnowledge = [
         ]
     },
     {
+        id: "2v2",
+        name: "2v2",
         topics: ["2v2", "two", "twos", "دبل", "ثنائي"],
         responses: [
-            "في الـ 2v2، السر هو التوازن. إذا زميلك مهاجم، انت دفاع. بس مو دفاع بعيد — قريب كفاية عشان لو ارتدت الكرة تلمسها. الفرق الكبيرة تقرأ ارتدادات الكره قبل لا تصير.",
-            "نصيحة قويه: لا تروح للـ boost إذا زميلك في الهجوم ويمكن يفقد الكرة. خذ small pads وابقى قريب. ثانية تأخير منك = هدف عليك.",
+            "في الـ 2v2، السر هو التوازن. إذا زميلك مهاجم، انت دفاع. بس مو دفاع بعيد — قريب كفاية عشان لو ارتدت الكرة تلمسها. الفرق الكبيرة تقرأ ارتدادات الكوره قبل لا تصير.",
+            "نصيحة قوية: لا تروح للـ boost إذا زميلك في الهجوم ويمكن يفقد الكرة. خذ small pads وابقى قريب. ثانية تأخير منك = هدف عليك.",
             "الـ 2v2 يعتمد على الـ first touch. اللي يلمس الكرة أول يتحكم باللعبة. درب الـ kickoff إلى أن يصبح عندك ثابت. و لا تنسى الـ demo — في 2v2 الديمو يفتح مساحات هائلة.",
-            "إذا خسرت المباراة، شوف كم مره لعبت وانت ورا زميلك (double committing). هذي أكبر غلطة في 2v2. اقرأ تحركات زميلك."
+            "إذا خسرت المباراة، شوف كم مرة لعبت وانت ورا زميلك (double committing). هذي أكبر غلطة في 2v2. اقرأ تحركات زميلك."
         ]
     },
     {
+        id: "3v3",
+        name: "3v3",
         topics: ["3v3", "three", "threes", "ثلاثي", "standard"],
         responses: [
             "الـ 3v3 لعبة سرعة و تنظيم. النظام اللي أتبعه: لاعب ١ يضغط (first man)، لاعب ٢ يساند (second man)، لاعب ٣ دفاع بعيد (third man). كل واحد له دور واضح.",
             "الغلطة الأكثر شيوعاً في 3v3: كل اللاعبين يهجمون. لا! إذا تقدمتم كلهم، أي كرة طايرة من الخصم = هدف. لاعب واحد يهجم، الثاني مساند على بعد ١٠ متر، الثالث دفاع.",
             "في الـ kickoff، الـ cheat up (يميل شوي قدام) استراتيجية قوية. بس إذا سويتها و الخصم سوا quick aerial — بتستقبل هدف. اقرأ أسلوب الخصم و قرر.",
-            "الفرق المحترفة تتكلم باستمرار. الكل يعلن: 'I'm challenging', 'I'm back', 'You go'. إذا ما عندك مايك، استخدم quick chats. التواصل أهم من الميكانيك."
+            "الفرق المحترفة تتكلم باستمرار. الكل يعلن: \"أنا هاجم\", \"أنا رجعت\", \"دق علي\". إذا ما عندك مايك، استخدم quick chats. التواصل أهم من الميكانيك."
         ]
     },
     {
+        id: "1v1",
+        name: "1v1",
         topics: ["1v1", "one", "ones", "فردي", "duel"],
         responses: [
             "الـ 1v1 أصعب وضع — كل غلطتك تنشاف ولا في زميل يعوضك. النصيحة الأولى: shadow defense. ارجع مع الكورنر و إقرأ الخصم بدل ما تنقض.",
@@ -410,7 +423,9 @@ const coachKnowledge = [
         ]
     },
     {
-        topics: ["ديفينس", "دفاع", "تصدي", "save", "goal", "مرمى", "حارس"],
+        id: "defense",
+        name: "دفاع",
+        topics: ["ديفينس", "دفاع", "تصدي", "save", "مرمى", "حارس", "حراسة"],
         responses: [
             "الدفاع يبدأ قبل لا توصل الكرة. التمركز الصحيح يقلل التصدي الصعب. اقعد على back post و خلي الكرة قدامك — لا تكون جنب المرمى.",
             "في التصدي، استخدم الـ jump اقل ما يمكن. إذا تقدر تلمسها وانت على الأرض — أفضل. القفز يخليك خارج اللعبه ثانيتين كاملة.",
@@ -420,7 +435,9 @@ const coachKnowledge = [
         ]
     },
     {
-        topics: ["هجوم", "هجمة", "تسديد", "تسديدة", "shot", "تسجل", "هدف", "scoring"],
+        id: "offense",
+        name: "هجوم",
+        topics: ["هجوم", "هجمة", "تسديد", "تسديدة", "shot", "تسجيل", "هدف", "scoring"],
         responses: [
             "في الهجوم، التنوع هو السلاح. إذا تسدد نفس النوع كل مرة — الخصم بيقرأك. غير بين: ground shot, air dribble, flick, pass.",
             "أفضل لحظة تسديد: الخصم قاعد يعمل rotate. إذا شفت اثنين من الفريق الخصم في نفس الزاوية — سدد فوراً. المرمى فاضي.",
@@ -429,44 +446,56 @@ const coachKnowledge = [
         ]
     },
     {
-        topics: ["تطور", "تتحسن", "اتعلم", "تحسن", "طور", "تمرين", "تدريب", "training", "improve", "learn", "rank", "رتبة", "رنك"],
+        id: "improvement",
+        name: "تطوير",
+        topics: ["كيف اتدرب", "كيف اطور", "كيف اتعلم", "كيف احسن", "اتدرب", "تطور", "تتحسن", "اتعلم", "تحسن", "طور", "اتطور", "مستواي", "ضعيف", "غلطاتي", "اخطائي", "مشكلتي", "rank", "رنك", "رتبة", "رتبتي"],
         responses: [
             "التطور في روكيت ليق يحتاج شيئين: تكرار واعي و تحليل. العب أقل، حلل أكثر. خذ ١٠ دقائق تشوف ريبلاي نفسك قبل كل جلسة لعب.",
             "أفضل طريقة تتحسن: free play يومياً ١٥ دقيقة قبل ما تبدأ Ranked. ركز على: التحكم بالكرة، السرعة، الـ recoveries. هذي مهارات أساسية.",
             "لا تهتم بالرنك. ركز على مهارة وحدة كل أسبوع. هالاسبوع: wavedashes. الأسبوع الجاي: fast aerials. شهر واحد و بتشوف فرق.",
-            "تحليل الريبلاي هو سر المحترفين. شوف كل هدف دخل عليك من视角 ثالث (bird's eye). اسأل نفسك: وين كان المفروض أكون؟",
-            "نصيحة من تجربتي: كل ما زاد ضغط المباراة، زادت أخطائك. تدرب على الـ breathing. خذ نفس عميق قبل كل kickoff. اللعبة mental game نفس ما هي physical."
+            "تحليل الريبلاي هو سر المحترفين. شوف كل هدف دخل عليك من منظور ثالث. اسأل نفسك: وين كان المفروض أكون؟",
+            "نصيحة من تجربتي: كل ما زاد ضغط المباراة، زادت أخطائك. تدرب على الـ breathing. خذ نفس عميق قبل كل kickoff. اللعبة لعبة mental بنفس ما هي physical.",
+            "اللي يمنعك ترتفع مو مهارتك — وعيك بأخطائك. كل رتبة لها مشكلة. plat: تلعب بسرعة بدون تفكير. diamond: تطفش من الدفاع. champ: قرارات سيئة تحت الضغط. حدد رتبتك واشتغل على نقطة الضعف.",
+            "أفضل طريقة تتحسن: خذ مهارة واحدة كل أسبوع. الأسبوع الأول: recoveries. الثاني: first touch. الثالث: دقة التسديد. الرابع: shadow defense. كل يوم ١٥ دقيقة قبل الرانكد."
         ]
     },
     {
-        topics: ["mental", "عقلي", "نفسي", "غضب", "ضغط", "toxis", "tilt", "toxic", "nerves", "قلق"],
+        id: "mental",
+        name: "نفسي",
+        topics: ["mental", "عقلي", "نفسي", "غضب", "ضغط", "tilt", "toxic", "toxicity", "nerves", "قلق", "انفعال"],
         responses: [
             "الـ mentality أساسي. إذا خسرت مباراتين ورا بعض — اترك اللعبة. امشي ٥ دقايق، اشرب موية، و ارجع. الـ tilt يخليك تسوء أكثر.",
-            "لا ترد على toxic players. Mute الكل و العب لعبتك. الـ chat ما يجيبلك رنك. ركز على اللي تقدر تتحكم فيه: قراراتك و تحركاتك.",
+            "لا ترد على toxic players. كتم الكل و العب لعبتك. الـ chat ما يجيبلك رنك. ركز على اللي تقدر تتحكم فيه: قراراتك و تحركاتك.",
             "في الـ RLCS، الفرق اللي تفوز هي اللي تهدأ تحت الضغط. إذا راح عليك هدف اول — خذ نفس و ابدا من جديد. المباراة ما انتهت.",
             "الـ confidence يأتي من التحضير. إذا تدربت زين قبل المباراة، بتلعب زين. الثقة مو كبرياء — ثقة إنك سويت الـ preparation."
         ]
     },
     {
-        topics: ["سكريم", "scrim", "فريق", "team", "teamplay", "جماعي", "فريقي"],
+        id: "teamplay",
+        name: "جماعي",
+        topics: ["سكريم", "scrim", "فريق", "team", "جماعي", "فريقي", "teamplay"],
         responses: [
             "السكريمات تختلف عن ranked. هنا تحتاج استراتيجية: سو play مكتوب (pre-planned). مثلاً كيك اوف معين يتبعه play معين.",
-            "أهم شي في اللعب الجماعي: التواصل. يكون في قائد يعطي تعليمات واضحة. مش 'هجم' — 'أنا أول، ارجع'. الوضوح يمنع الـ double commit.",
-            "في السكريم، جرب تشكيلات مختلفة. كل لاعب له دور: striker, midfielder, defender. مع الوقت بتعرفون وين كل واحد يبدع.",
+            "أهم شي في اللعب الجماعي: التواصل. يكون في قائد يعطي تعليمات واضحة. مش \"هجم\" — \"أنا أول، ارجع\". الوضوح يمنع الـ double commit.",
+            "في السكريم، جرب تشكيلات مختلفة. كل لاعب له دور: مهاجم، وسط، مدافع. مع الوقت بتعرفون وين كل واحد يبدع.",
             "حللوا سوا بعد كل مباراة. ٥ دقايق نقاش: وش ضبط؟ وش لا؟ بدون لوم. التحليل الجماعي يرفع مستوى الفريق كامل."
         ]
     },
     {
+        id: "demos",
+        name: "ديمو",
         topics: ["ديمو", "demo", "demolish", "تدمير", "اشتباك", "bump"],
         responses: [
             "الديمو مو حرام — استراتيجيه! استخدمه عشان تفتح مساحة. في 3v3، ديمو المدافع يفتح المرمى بشكل مو طبيعي.",
             "أفضل وقت للديمو: الخصم واقف يتفرج على الكورة (ball chasing). ديمو و كوره في المرمى. بس لا تجري ورا ديمو و تترك منطقتك.",
             "في 2v2، الـ bump و الـ demo يغيرون المباراة. إذا سويت ديمو لأحد اللاعبين، عندكم ٢ ضد ١ لمدة ٣ ثواني — استغلوها.",
-            "نصيحة: لا تركز على الديمو كثير. طبيعي يصير لك ديمو — سوي recover سريع و ارجع. الديمو مو نهاية العالم."
+            "نصيحة: لا تركز على الديمو كثير. طبيعي يصير لك ديمو — سو recover سريع و ارجع. الديمو مو نهاية العالم."
         ]
     },
     {
-        topics: ["كيرف", "curve", "hook", "بانج", "bank", "حائط", "wall", "ارتداد"],
+        id: "wallplay",
+        name: "حائط",
+        topics: ["حائط", "wall", "ارتداد", "كيرف", "curve", "hook", "بانج", "bank", "كورنر", "corner"],
         responses: [
             "الـ wall play من أهم المهارات. أول شي: تعلم تتحكم بالكرة على الحائط في free play. ارمي الكوره على الحائط، اطير وراها، و حولها لمرمى.",
             "في الدفاع، استخدم الحائط عشان تطلع الكوره من منطقة الخطر. لا تحاول تلمسها وهي في الهواء — خلها ترتد و اقطعها.",
@@ -475,6 +504,8 @@ const coachKnowledge = [
         ]
     },
     {
+        id: "kickoff",
+        name: "كيك أوف",
         topics: ["كيك", "kickoff", "بداية", "انطلاق", "faceoff"],
         responses: [
             "الكيك أوف يحدد وتيرة المباراة. تعلم speed flip kickoff عشان توصل الكوره قبل الخصم. فرّق كبير بين لاعبين متساويين.",
@@ -484,241 +515,210 @@ const coachKnowledge = [
         ]
     },
     {
-        topics: ["ساس", "sauce", "استايل", "style", "ستايل", "فلير", "fancy", "احتراف", "pro"],
+        id: "pro",
+        name: "احتراف",
+        topics: ["ساس", "sauce", "ستايل", "style", "فلير", "fancy", "احتراف", "pro", "rlcs", "بطولة", "محترف", "worlds", "zen", "vatira", "monkey", "beastmode", "firstkiller"],
         responses: [
             "لا تحاول تلعب استايل pro من اول يوم. المحترفين يلعبون ببساطة — حركاتهم الأساسية قوية ومتقنة. أتقن الأساسيات الأول.",
-            "Zen و Vatira و Beastmode — كل واحد له ستايل مختلف. شوف فيديوهاتهم و حلل ليش قراراتهم صحيحة. مو بس الحركات الحلوة.",
-            "اقوى حركة في الـ RLCS؟ الجواب: اتخاذ القرار السريع. المحترف يقرر في أجزاء من الثانية. هذا ييجي من الخبرة و التكرار.",
+            "كل واحد من المحترفين له ستايل مختلف — شاهد فيديوهاتهم و حلل ليش قراراتهم صحيحة. مو بس الحركات الحلوة.",
+            "أقوى حركة في الـ RLCS؟ الجواب: اتخاذ القرار السريع. المحترف يقرر في أجزاء من الثانية. هذا ييجي من الخبرة و التكرار.",
             "ما يصير محترف بين ليلة و ضحاها. كل الـ pros لعبوا آلاف الساعات. استمتع بالرحلة و ركز على التطور — الرنك بييجي."
         ]
     },
     {
-        topics: ["تدريب", "training", "تمرين", "تريننق", "باك", "pack", "كود", "code", "كودات", "training pack", "ماب", "map", "وركشوب", "workshop", "مهارات", "كيف اتدرب", "كيف اطور", "مابت"],
+        id: "training_packs",
+        name: "كودات تدريب",
+        topics: ["كود", "كودات", "code", "codes", "pack", "باك", "تدريب", "training", "تريننق", "تمرين", "مابت", "ماب", "map", "وركشوب", "workshop", "مهارات"],
         responses: [
-            "عندي لك مجموعة مابات تدريب شاملة لكل مهارات روكيت ليق. اختر اللي يناسب مستواك:\n\n🎯 **تسديد**\n• Ground Shots (Poquito): `6EB1-79B2-33B8-681C`\n• Shooting Consistency: `6DCC-4761-4C37-F06C`\n• Powershot Pack: `50F2-5EF8-4FBE-8F57`\n• First Touch & Shot: `39DF-4E31-4B1C-62A7`\n\n✈️ **إيريال**\n• Aerials (Poquito): `5CB2-6B38-42A3-EB1C`\n• Air Roll Aerials: `D07B-2074-49CB-8207`\n• High Aerials: `A69C-49FE-4C0B-7F96`\n• Backboard Reads: `3BEB-3C0C-49DB-A208`\n\n🔄 **فليك و دريبل**\n• Flick Training: `446B-38B4-4F16-50B7`\n• Ground Dribble: `40C8-4056-4138-459F`\n• Bounce Dribble: `4C2F-4B38-4C41-9A24`\n• 45° Flick: `87C1-61F4-4E58-80CF`\n\n🥅 **دفاع**\n• Defensive Aerials (Llexxi): `5CB2-6B38-42A3-EB1C`\n• Save Training: `0746-4776-41FC-5D1A`\n• Shadow Defense: `6487-3B3C-400D-65A4`\n• Uncomfortable Saves: `6F2E-4E2B-4CB3-B1D2`\n\n🔥 **متقدمة**\n• Air Dribble (Aizr): `C8ED-420B-4AF3-B6EE`\n• Flip Reset (Aizr): `A79E-4B0C-4F5E-9C2B`\n• Redirects (Poquito): `8E3C-6B42-4C31-09B7`\n• Ceiling Shots: `84F7-402B-4B9A-4693`\n• Wall Shots: `0A3C-84B6-4307-CE45`\n\n⚡ **كيك أوف و سبيد**\n• Speed Flip Kickoff: `A503-4C87-44F3-60B6`\n• Kickoff Training: `E81B-4A33-4C9F-88C6`\n\n💡 **تسخين كامل**\n• Ultimate Warmup (WayProtein): `4969-3B77-4D8A-3A3C`",
-            "المابتات اللي أستخدمها شخصياً:\n\n**للمبتدئين:**\n• Ultimate Warmup → `4969-3B77-4D8A-3A3C` — كل المهارات الأساسية\n• Ground Shots → `6EB1-79B2-33B8-681C` — دقة التسديد\n• Aerials → `5CB2-6B38-42A3-EB1C` — أساس الإيريال\n\n**متوسط:**\n• Redirects → `8E3C-6B42-4C31-09B7` — يخليك تقرأ الكورة\n• Backboard Defense → `3BEB-3C0C-49DB-A208` — دفاع الحائط\n• Shadow Defense → `6487-3B3C-400D-65A4` — يرفع وعيك الدفاعي\n\n**متقدم:**\n• Air Dribble → `C8ED-420B-4AF3-B6EE` — تحكم بالكرة في الجو\n• Flip Reset → `A79E-4B0C-4F5E-9C2B` — أغنى حركة باللعبة\n• Speed Flip → `A503-4C87-44F3-60B6` — سرعة الكيك أوف\n\nابدأ من اللي يناسب مستواك و زود التحدي كل أسبوع.",
-            "📋 **حسب مستواك:**\n\n**Plat و Diamond:**\n1️⃣ Ground Shots: `6EB1-79B2-33B8-681C`\n2️⃣ Aerials: `5CB2-6B38-42A3-EB1C`\n3️⃣ Save Training: `0746-4776-41FC-5D1A`\n4️⃣ Ultimate Warmup: `4969-3B77-4D8A-3A3C`\nركز على التسديد و الدفاع.\n\n**Champ:**\n1️⃣ Air Dribble: `C8ED-420B-4AF3-B6EE`\n2️⃣ Redirects: `8E3C-6B42-4C31-09B7`\n3️⃣ Bounce Dribble: `4C2F-4B38-4C41-9A24`\n4️⃣ Speed Flip: `A503-4C87-44F3-60B6`\nطور تحكمك الجوي و سرعتك.\n\n**GC و SSL:**\n1️⃣ Flip Reset: `A79E-4B0C-4F5E-9C2B`\n2️⃣ Ceiling Shots: `84F7-402B-4B9A-4693`\n3️⃣ Wall Shots: `0A3C-84B6-4307-CE45`\n4️⃣ Kit自分のパーソナル\nهنا تركز على التخصص و الميكانيك الدقيقة.",
-            "عندي لك كودات مابات تدريب مقسمة حسب المهارة:\n\n🎯 **تسديد**\n• Ground Shots → `6EB1-79B2-33B8-681C`\n• Powershot → `50F2-5EF8-4FBE-8F57`\n• Shooting Consistency → `6DCC-4761-4C37-F06C`\n\n✈️ **إيريال**\n• Aerials Pack → `5CB2-6B38-42A3-EB1C`\n• High Aerials → `A69C-49FE-4C0B-7F96`\n• Air Roll Shots → `D07B-2074-49CB-8207`\n\n🔥 **متقدمة**\n• Flip Reset → `A79E-4B0C-4F5E-9C2B`\n• Air Dribble → `C8ED-420B-4AF3-B6EE`\n• Redirects → `8E3C-6B42-4C31-09B7`\n• Ceiling Shot → `84F7-402B-4B9A-4693`\n• Wall Shots → `0A3C-84B6-4307-CE45`\n\n🛡️ **دفاع**\n• Saves → `0746-4776-41FC-5D1A`\n• Shadow D → `6487-3B3C-400D-65A4`\n• Backboard → `3BEB-3C0C-49DB-A208`\n\n⚡ **سرعة**\n• Speed Flip → `A503-4C87-44F3-60B6`\n• Kickoff → `E81B-4A33-4C9F-88C6`\n\n📌 انسخ الكود و حطه في Custom Training > Enter Code",
-            "بداية، إذا جديد، ابدأ بـ Ultimate Warmup: `4969-3B77-4D8A-3A3C`. ٥٠ كرة تغطي كل الأساسيات. بعدها خذ Ground Shots عشان تضبط دقة التسديد.\n\nلما تحس مستواك تحسن، انتقل لـ Redirects و Air Dribble. و لا تنسى كل جلسة لازم تمرن على ساعتين:\n- ١٠ دقايق Free Play (تحكم بالكرة)\n- ١٠ دقايق مابت تدريب (تركيز على مهارة)\n- ١٠ دقايق 1v1 (ضغط حقيقي)\n\nهالروتين يرفع مستواك بسرعة.",
-            "أفضل مابت تدريب بالنسبة لي:\n\n🏆 **Ground Shots (Poquito)**\n`6EB1-79B2-33B8-681C`\nأفضل مابت لتطوير دقة التسديد من الأرض. ٣٢ كرة بتصاعد في الصعوبة.\n\n🏆 **Aerials (Poquito)**\n`5CB2-6B38-42A3-EB1C`\nأساس الإيريال — يخليك تتحكم بالكرة في الجو.\n\n🏆 **Ultimate Warmup**\n`4969-3B77-4D8A-3A3C`\nتسخين شامل لجميع المهارات قبل الرانكد.\n\n🏆 **Air Dribble (Aizr)**\n`C8ED-420B-4AF3-B6EE`\nتعلم تتحكم بالكرة من أول لمسة إلى التسجيل.\n\n🏆 **Flip Reset (Aizr)**\n`A79E-4B0C-4F5E-9C2B`\nأصعب حركة في اللعبة — لكن مع التكرار تصير عادة."
+            "عندي لك مجموعة مابات تدريب شاملة:\n\n🎯 تسديد\n• Ground Shots: 6EB1-79B2-33B8-681C\n• Shooting Consistency: 6DCC-4761-4C37-F06C\n• Powershot: 50F2-5EF8-4FBE-8F57\n\n✈️ إيريال\n• Aerials: 5CB2-6B38-42A3-EB1C\n• Air Roll Aerials: D07B-2074-49CB-8207\n• High Aerials: A69C-49FE-4C0B-7F96\n• Backboard Reads: 3BEB-3C0C-49DB-A208\n\n🔄 فليك و دريبل\n• Flick Training: 446B-38B4-4F16-50B7\n• Ground Dribble: 40C8-4056-4138-459F\n• Bounce Dribble: 4C2F-4B38-4C41-9A24\n\n🥅 دفاع\n• Defensive Aerials: 5CB2-6B38-42A3-EB1C\n• Save Training: 0746-4776-41FC-5D1A\n• Shadow Defense: 6487-3B3C-400D-65A4\n\n🔥 متقدمة\n• Air Dribble: C8ED-420B-4AF3-B6EE\n• Flip Reset: A79E-4B0C-4F5E-9C2B\n• Redirects: 8E3C-6B42-4C31-09B7\n• Ceiling Shots: 84F7-402B-4B9A-4693\n• Wall Shots: 0A3C-84B6-4307-CE45\n\n⚡ سرعة\n• Speed Flip: A503-4C87-44F3-60B6\n• Kickoff: E81B-4A33-4C9F-88C6\n\n💡 Ultimate Warmup: 4969-3B77-4D8A-3A3C",
+            "المابتات حسب مستواك:\n\n**Plat / Diamond:**\n• Ground Shots: 6EB1-79B2-33B8-681C\n• Aerials: 5CB2-6B38-42A3-EB1C\n• Saves: 0746-4776-41FC-5D1A\n• Ultimate Warmup: 4969-3B77-4D8A-3A3C\n\n**Champ:**\n• Air Dribble: C8ED-420B-4AF3-B6EE\n• Redirects: 8E3C-6B42-4C31-09B7\n• Bounce Dribble: 4C2F-4B38-4C41-9A24\n• Speed Flip: A503-4C87-44F3-60B6\n\n**GC / SSL:**\n• Flip Reset: A79E-4B0C-4F5E-9C2B\n• Ceiling Shots: 84F7-402B-4B9A-4693\n• Wall Shots: 0A3C-84B6-4307-CE45\n\n📌 انسخ الكود وحطه في Custom Training > Enter Code",
+            "أفضل مابت تدريب بالنسبة لي:\n\n🏆 Ground Shots (Poquito): 6EB1-79B2-33B8-681C — أفضل مابت لدقة التسديد.\n🏆 Aerials (Poquito): 5CB2-6B38-42A3-EB1C — أساس الإيريال.\n🏆 Ultimate Warmup: 4969-3B77-4D8A-3A3C — تسخين شامل قبل الرانكد.\n🏆 Air Dribble (Aizr): C8ED-420B-4AF3-B6EE — تحكم بالكرة في الجو.\n🏆 Flip Reset (Aizr): A79E-4B0C-4F5E-9C2B — أصعب حركة في اللعبة.",
+            "روتيني اليومي عشان أطور:\n\n١- ١٠ دقايق Free Play — تحكم بالكرة.\n٢- ١٠ دقايق مابت تدريب — ركز على مهارة واحدة.\n٣- ١٠ دقايق 1v1 — ضغط حقيقي.\n\nهالروتين يرفع مستواك بسرعة."
+        ]
+    },
+    {
+        id: "camera_settings",
+        name: "إعدادات",
+        topics: ["كاميرا", "camera", "إعدادات", "ضبط", "setting", "حساسية", "sens", "sensitivity", "كنترول", "تحكم", "controller", "deadzone", "دزون"],
+        responses: [
+            "الإعدادات شي شخصي. بس أقدر أعطيك إعداداتي اللي أوصلتني لـ RLCS:\n\n📷 Camera:\n• Distance: 270\n• Height: 90\n• Angle: -5\n• Stiffness: 0.45\n• Swivel Speed: 5.0\n• Transition Speed: 1.20\n\n🎮 Controller:\n• Steering Sens: 1.30\n• Aerial Sens: 1.30\n• Deadzone: 0.05\n• Dodge Deadzone: 0.60\n\nجربها وعدل عاللي يناسبك. أهم شي: لا تغير الإعدادات كل يوم."
+        ]
+    },
+    {
+        id: "replay_analysis",
+        name: "تحليل ريبلاي",
+        topics: ["ريبلاي", "تحليل", "نتايج", "نتائج", "replay"],
+        responses: [
+            "حللنا الريبلاي حقك. الأرقام تتكلم. بس التحليل الحقيقي يكون لما تشوف الريبلاي بنفسك بنظرة ثالثة. ركز على:\n1️⃣ أول ٣ ثواني بعد ما تلمس الكورة — وين تروح؟\n2️⃣ الـ double commits — كم مرة لعبت وانت ورا زميلك؟\n3️⃣ كل هدف دخل عليك — وش كان المفروض تسوي بدال اللي سويت؟",
+            "لما تحلل ريبلاي نفسك، اسأل نفسك ٣ أسئلة:\n• هل كنت في المكان الصحيح للدفاع؟\n• هل استخدمت البوست بذكاء ولا أهدرته؟\n• هل تواصلت مع زملائك؟\n\nالأجوبة تكشف نقاط ضعفك."
         ]
     }
 ];
 
-// ─── COACH CONTEXT ─────────────────────────
-let coachContext = {
-    lastTopic: null,
-    lastResponse: null,
-    turnCount: 0,
-    askedForCodes: false
-};
-
-// ─── TEXT NORMALIZATION ────────────────────
-function normalize(text) {
-    let t = text.toLowerCase();
-    t = t.replace(/[إأآا]/g, "ا");
-    t = t.replace(/ى/g, "ي");
-    t = t.replace(/ة/g, "ه");
-    t = t.replace(/ِ|ُ|َ|ٌ|ٍ|ً/g, "");
-    return t;
+// ─── TEXT NORMALIZATION ──────────────────
+function coachNorm(text) {
+    return text.toLowerCase()
+        .replace(/[إأآا]/g, "ا")
+        .replace(/ى/g, "ي")
+        .replace(/ة/g, "ه")
+        .replace(/ِ|ُ|َ|ٌ|ٍ|ً/g, "");
 }
 
-function tokenize(text) {
-    return normalize(text).split(/\s+/).filter(w => w.length >= 2);
+function coachWords(text) {
+    return coachNorm(text).split(/\s+/).filter(w => w.length >= 2);
 }
 
-function getBigrams(words) {
-    const bigrams = [];
-    for (let i = 0; i < words.length - 1; i++) {
-        bigrams.push(words[i] + " " + words[i + 1]);
+// ─── SMART "HOW TO IMPROVE AT X" PARSER ──
+function parseImproveQuery(text) {
+    const norm = coachNorm(text);
+    const m = norm.match(/^(?:كيف|كيفيه|كيفية|وشلون)\s+(?:اتدرب|اتعلم|اطور|احسن)\s+(?:على|في)?\s*(.+)/);
+    if (m) {
+        const topic = m[1].trim();
+        if (topic.length >= 2) return topic;
     }
-    return bigrams;
+    return null;
 }
 
-function getTrigrams(words) {
-    const tri = [];
-    for (let i = 0; i < words.length - 2; i++) {
-        tri.push(words[i] + " " + words[i + 1] + " " + words[i + 2]);
-    }
-    return tri;
-}
-
-// ─── QUESTION WORD DETECTION ───────────────
-function detectQuestionType(text) {
-    const t = normalize(text);
-    if (/^(كيف|كيفيه|كيفية|طريقه|طريقة|وشلون)/.test(t)) return "how";
-    if (/^(وش|ماهو|ماهي|ما|منو|من)/.test(t)) return "what";
-    if (/^(ليش|ليه|لماذ)/.test(t)) return "why";
-    if (/^(عطيني|اعطيني|جيب|ورني|ارني|دلني)/.test(t)) return "give";
-    if (/^(هل|اذا|لو)/.test(t)) return "if";
-    if (/^(عندك|فيه|في)/.test(t)) return "have";
-    if (/^(اشرح|فسر|وضح|عرفني)/.test(t)) return "explain";
-    return "other";
-}
-
-// ─── COACH MATCHER ─────────────────────────
+// ─── CATEGORY MATCHER ────────────────────
 function findBestCategory(input) {
-    const norm = normalize(input);
+    const norm = coachNorm(input);
+    const words = coachWords(input);
 
     let best = { entry: null, score: 0, matches: [] };
 
     for (const entry of coachKnowledge) {
         let score = 0;
-        const matchedKeywords = [];
+        const matched = [];
 
         for (const topic of entry.topics) {
-            const t = normalize(topic);
-            // Exact multi-word phrase match is strongest
+            const t = coachNorm(topic);
+
+            // Multi-word exact phrase match — strongest signal
             if (t.includes(" ") && norm.includes(t)) {
-                score += t.length * 6;
-                matchedKeywords.push(t);
+                score += t.length * 8;
+                matched.push(topic);
                 continue;
             }
-            // Exact single-word match
-            const wordsInNorm = norm.split(/\s+/);
-            if (wordsInNorm.includes(t) && t.length > 1) {
-                score += t.length * 4;
-                matchedKeywords.push(t);
+
+            // Exact word match in tokenized input
+            if (!t.includes(" ") && words.includes(t)) {
+                score += t.length * 5;
+                matched.push(topic);
                 continue;
             }
-            // Norm contains the keyword (user wrote keyword as part of input)
-            if (norm.includes(t) && t.length >= 2) {
-                score += t.length * 2;
-                matchedKeywords.push(t);
+
+            // Substring match — weakest signal
+            if (!t.includes(" ") && norm.includes(t)) {
+                score += t.length * 1;
+                matched.push(topic);
                 continue;
             }
         }
 
-        // Boost if category name is in input
-        if (norm.includes(normalize(entry.name))) {
-            score += 30;
-        }
-
-        // Bonus: more unique keyword matches = stronger signal
-        if (matchedKeywords.length >= 3) score += 10;
-        if (matchedKeywords.length >= 2) score += 4;
+        // Bonus for 2+ unique keyword matches
+        if (matched.length >= 3) score += 15;
+        else if (matched.length >= 2) score += 6;
 
         if (score > best.score) {
-            best = { entry, score, matches: matchedKeywords };
+            best = { entry, score, matches: matched };
         }
     }
 
     return best;
 }
 
-// ─── SMART FALLBACK ────────────────────────
-function smartFallback(input) {
-    const norm = normalize(input);
-    const words = tokenize(input);
-
-    // Check if it's about personal performance
-    if (words.some(w => ["ضعيف", "مستواي", "متطور", "تطوير", "اتحسن", "تحسنت", "مشكلتي", "غلطاتي", "اخطائي"].includes(w))) {
-        return "صراحة، مشكلتك مو في الميكانيك. مشكلتك في اتخاذ القرار. أكثر لاعبين يظنون أنهم بطيئين أو ما يلمسون الكورة — لكن الحقيقة إنهم في المكان الغلط.\n\nحلل ثلاث مباريات لعبك. شوف كل هدف دخل عليك: هل كان بسبب سوء تمركز؟ لو الجواب نعم — ركز اسبوع كامل على التمركز فقط. رح تتفاجأ بكم目标和 بتقل.";
+// ─── FALLBACK HANDLERS ───────────────────
+function coachGreeting(input) {
+    const g = ["هلا", "هلو", "مرحبا", "هاي", "hi", "hello", "hey", "سلام", "اهلين", "السلام عليكم", "مساء", "صباح"];
+    const norm = coachNorm(input.trim());
+    const words = coachWords(input);
+    if (words.length <= 3 && g.some(x => coachNorm(x) === norm || norm.startsWith(coachNorm(x)))) {
+        return true;
     }
-
-    // Asking about RLCS/pro players
-    if (words.some(w => ["rlcs", "محترف", "احتراف", "بطولة", "worlds", "pro", "zen", "vatira", "monkey", "beastmode", "firstkiller"].includes(w))) {
-        return "من وجهة نظري كلاعب RLCS سابق، الفرق بين المحترف والهاوي مو الميكانيك — الفرق في **الانتظام** (consistency). زن و فاتيرا يلعبون بنفس المستوى كل مباراة. ما عندهم مباراة سيئة.\n\nنصيحتي: شوف ريبلاي حق Zen من مباراة خسرها. شف كيف يتحرك تحت الضغط. المحترف ما يهلع — عنده خطة بديلة لكل موقف.";
-    }
-
-    // Asking about camera settings / controls
-    if (words.some(w => ["كاميرا", "camera", "اعدادات", "ضبط", "setting", "senstivity", "حساسية", "كنترول", "تحكم", "عصا", "controller"].includes(w))) {
-        return "الإعدادات شي شخصي. بس أقدر أعطيك إعداداتي اللي أوصلتني لـ RLCS:\n\n📷 **Camera:**\n• Distance: 270\n• Height: 90\n• Angle: -5\n• Stiffness: 0.45\n• Swivel Speed: 5.0\n• Transition Speed: 1.20\n\n🎮 **Controller:**\n• Steering Sens: 1.30\n• Aerial Sens: 1.30\n• Deadzone: 0.05 (ignore timing)\n• Dodge Deadzone: 0.60\n\nجربها وعدل عاللي يناسبك. أهم شي: لا تغير الإعدادات كل يوم — ثبتها و تعود عليها.";
-    }
-
-    // Asking about ranking up
-    if (words.some(w => ["رنك", "rank", "ترقية", "اطلع", "صاعد", "bronze", "silver", "gold", "platinum", "diamond", "champion", "gc", "ssl", "رتبه"].includes(w))) {
-        return "اللي يمنعك ترتفع مو مهارتك — وعيك بأخطائك. كل رتبة لها مشكلة:\n\n**Plat**: تلعب بسرعة بدون تفكير. اهدأ.\n**Diamond**: تطفش من الدفاع. العب أكثر خلف الكورة.\n**Champ**: قرارات سيئة تحت الضغط. خذ نفس.\n**GC**: still mechanical gaps.\n\nحدد رتبتك واشتغل على نقطة الضعف ذي بالذات — رح تطلع رنك.";
-    }
-
-    // Asking about specific mechanics
-    if (words.some(w => ["فليك", "flick", "فليب", "flip", "إيريال", "ايريال", "ايردربل", "دريبل", "wavedash", "speedflip", "half", "فلير", "reset"].includes(w))) {
-        return "أي ميكانيك في هاللعبة ينقسم لثلاث مراحل:\n1️⃣ **الفهم** — شوف كيف المحترف يسويها (فيديو يوتيوب)\n2️⃣ **التطبيق في free play** — كررها بدون ضغط ١٠ دقايق يومياً\n3️⃣ **التطبيق في المباراة** — جربها في مواقف منخفضة الخطورة\n\nأغلب الناس يطفرون من المرحلة ٢. لا تستعجل — كل ميكانيك يحتاج وقت.";
-    }
-
-    // Generic improvement advice
-    if (words.some(w => ["اتطور", "تطوير", "تحسن", "اتحسن", "مستواي", "ضعيف"].includes(w))) {
-        return "أفضل طريقة تتحسن: حدد **مهارة واحدة** كل أسبوع.\n\nالأسبوع الأول: الـ recoveries (wavedash, half flip)\nالأسبوع الثاني: first touch و التحكم بالكرة\nالأسبوع الثالث: دقة التسديد\nالأسبوع الرابع: shadow defense\n\nكل يوم ١٥ دقيقة قبل الرانكد. شهر واحد فقط و رح تشوف فرق كبير.";
-    }
-
-    return null;
+    return false;
 }
 
-// ─── COACH RESPONSE GENERATOR ──────────────
-function getCoachResponse(input) {
-    const norm = normalize(input.trim());
-    const words = tokenize(input);
-    coachContext.turnCount++;
+function coachThanks(input) {
+    const t = ["شكرا", "يسلمو", "تسلم", "thx", "thanks", "thank", "يعطيك", "ما قصرت"];
+    const norm = coachNorm(input.trim());
+    const words = coachWords(input);
+    if (words.length <= 3 && t.some(x => coachNorm(x) === norm || norm.startsWith(coachNorm(x)))) {
+        return true;
+    }
+    return false;
+}
 
-    // ── KB matching FIRST — always try to match the actual question ──
-    const result = findBestCategory(input);
-    if (result.entry && result.score > 2) {
-        coachContext.lastTopic = result.entry;
-        const responses = result.entry.responses;
-        let idx = Math.floor(Math.random() * responses.length);
-        if (responses.length > 1) {
-            let tries = 0;
-            while (responses[idx] === coachContext.lastResponse && tries < responses.length) {
-                idx = (idx + 1) % responses.length;
-                tries++;
-            }
+function coachAffirm(input) {
+    const a = ["نعم", "اي", "ايه", "yes", "yeah", "يب", "ok", "اوكي", "تم", "طيب"];
+    const norm = coachNorm(input.trim());
+    const words = coachWords(input);
+    if (words.length <= 2 && a.some(x => coachNorm(x) === norm || norm.startsWith(coachNorm(x)))) {
+        return true;
+    }
+    return false;
+}
+
+// ─── MAIN COACH RESPONSE ─────────────────
+function getCoachResponse(input) {
+    const text = input.trim();
+    if (!text) return "";
+
+    // ── Step 1: Check for "how to improve at X" and route to specific topic ──
+    const improveTopic = parseImproveQuery(text);
+    if (improveTopic) {
+        const topicResult = findBestCategory(improveTopic);
+        if (topicResult.entry && topicResult.score > 0) {
+            const responses = topicResult.entry.responses;
+            const idx = Math.floor(Math.random() * responses.length);
+            return responses[idx];
         }
-        coachContext.lastResponse = responses[idx];
+        // If no specific topic matched, fall through
+    }
+
+    // ── Step 2: KB category matching ──
+    const result = findBestCategory(text);
+    if (result.entry && result.score > 3) {
+        const responses = result.entry.responses;
+        const idx = Math.floor(Math.random() * responses.length);
         return responses[idx];
     }
 
-    // ── Smart fallback (covers personal questions, settings, rank, etc) ──
-    const smart = smartFallback(input);
-    if (smart) return smart;
-
-    // ── Pure greetings (only if very short and no KB match) ──
-    const greetings = ["هلا", "هلو", "مرحبا", "هاي", "hi", "hello", "hey", "سلام", "اهلين", "مساء الخير", "السلام عليكم", "صباح الخير"];
-    if (words.length <= 3 && greetings.some(g => norm.startsWith(g) || norm === g)) {
+    // ── Step 3: Pure greetings (no KB match) ──
+    if (coachGreeting(text)) {
         return "وعليكم السلام! أنا جاهز لأي سؤال — روتنيشن، ميكانيك، بوست، تدريب، أو تحليل. وش عندك؟";
     }
 
-    // ── Thanks & farewells (only if very short and no KB match) ──
-    const thanks = ["شكرا", "يسلمو", "تسلم", "thx", "thanks", "thank", "يعطيك", "الله يعافيك", "ما قصرت"];
-    if (words.length <= 3 && thanks.some(g => norm.startsWith(g) || norm === g)) {
-        const farewells = [
-            "العفو! أي وقت. شد حيلك و بتوصل GC قريباً 💪",
-            "الله يسلمك! إذا احتجت شي ثاني — أنا موجود.",
-            "على الرحب والسعة! تذكّر: التطور يحتاج صبر. كل مباراة درس جديد.",
-            "تقدّر بالخدمة! لا تنسى تسوي تحليل ريبلاي لنفسك — كل اسبوع مرة.",
-            "العفو! واذا تبغى كودات تدريب لمهارة معينة — قلي وش تحتاج."
+    // ── Step 4: Thanks / farewell ──
+    if (coachThanks(text)) {
+        const r = [
+            "العفو! إذا احتجت شي ثاني أنا موجود. شد حيلك و بتوصل GC قريباً",
+            "الله يسلمك! تذكّر: التطور يحتاج صبر. كل مباراة درس جديد",
+            "على الرحب والسعة! لا تنسى تسوي تحليل ريبلاي لنفسك كل اسبوع"
         ];
-        return farewells[Math.floor(Math.random() * farewells.length)];
+        return r[Math.floor(Math.random() * r.length)];
     }
 
-    // ── Affirmative follow-up ──
-    const affirmatives = ["نعم", "اي", "ايه", "yes", "yeah", "يب", "ok", "اوكي", "تم", "طيب"];
-    if (words.length <= 2 && affirmatives.some(a => norm === a || norm.startsWith(a))) {
-        const followups = [
-            "تمام! جرب الكلام اللي قلته لك و ارجع لي بخبر.",
+    // ── Step 5: Short affirmative follow-up ──
+    if (coachAffirm(text)) {
+        const r = [
+            "تمام! جرب الكلام اللي قلته لك و ارجع لي بخبر",
             "كويس! عندك سؤال ثاني؟",
-            "حلو. خلني أضيف: أهم شي الاستمرارية. كل يوم شوي — مو مرة في الأسبوع كثير.",
-            "ممتاز! إذا تبغى شيء محدد — روتنيشن، ميكانيك، تدريب — قلي."
+            "حلو. خلني أضيف: أهم شي الاستمرارية. كل يوم شوي — مو مرة في الأسبوع كثير"
         ];
-        return followups[Math.floor(Math.random() * followups.length)];
+        return r[Math.floor(Math.random() * r.length)];
     }
 
-    // ── About replay analysis ──
-    if (norm.includes("ريبلاي") || norm.includes("نتايج") || norm.includes("نتائج")) {
-        return "حللنا الريبلاي حقك. الأرقام تتكلم. بس التحليل الحقيقي يكون لما تشوف الريبلاي بنفسك بنظرة ثالثة. ركز على:\n1️⃣ أول ٣ ثواني بعد ما تلمس الكورة — وين تروح؟\n2️⃣ الـ double commits — كم مرة لعبت وانت ورا زميلك؟\n3️⃣ كل هدف دخل عليك — ويش كان المفروض تسوي بدال اللي سويت؟";
-    }
-
-    // ── Ultra fallback ──
-    const ulf = [
-        "صراحةً، سؤالك يحتاج تفصيل. وش بالضبط اللي تبغى تعرفه؟ مثلاً: روتنيشن ولا ميكانيك ولا تدريب؟.",
-        "سؤال ممتاز. بس عشان أجاوب بدقة: هل تقصد في 1v1 ولا 2v2 ولا 3v3؟ كل طور له أسلوب مختلف.",
-        "أقدر أفيدك بشرط: حدد وش المشكلة بالضبط. هل هي في الهجوم ولا الدفاع؟ ولا في التمركز ولا القرارات؟ كل شي له حل مختلف.",
-        "أهلاً! وش تحتاج؟ عندي خبرة في كل شي روكيت ليق — روتنيشن، ميكانيك، إدارة بوست، تحليل ريبلاي. قلي وش تبي بالضبط.",
-        "بصفتي لاعب RLCS سابق، أقدر أقولك إن السؤال هذا يلامس موضوع كبير. أقترح تركز على جزئية وحدة: مثلاً تحسين التمركز الدفاعي. إذا تبغى تفاصيل أكثر قلي."
+    // ── Step 6: Catch-all ──
+    const fallbacks = [
+        "صراحة، سؤالك يحتاج تفصيل. وش بالضبط اللي تبغى تعرفه؟ مثلاً: روتنيشن، ميكانيك، تدريب، أو بوست؟",
+        "سؤال ممتاز. بس عشان أجاوب بدقة: هل تقصد في 1v1 ولا 2v2 ولا 3v3؟ كل طور له أسلوب مختلف",
+        "أقدر أفيدك بشرط: حدد وش المشكلة بالضبط. هل هي في الهجوم ولا الدفاع؟ ولا في التمركز ولا القرارات؟",
+        "بصفتي لاعب RLCS سابق، أقدر أقولك إن السؤال هذا يلامس موضوع كبير. أقترح تركز على جزئية وحدة: مثلاً تحسين التمركز الدفاعي"
     ];
-    return ulf[Math.floor(Math.random() * ulf.length)];
+    return fallbacks[Math.floor(Math.random() * fallbacks.length)];
 }
 
-// ─── COACH UI ──────────────────────────────
+// ─── COACH UI ────────────────────────────
 const coachToggle = document.getElementById("coach-toggle");
 const coachPanel = document.getElementById("coach-panel");
 const coachClose = document.getElementById("coach-close");
@@ -731,9 +731,7 @@ let coachOpen = false;
 coachToggle.addEventListener("click", () => {
     coachOpen = !coachOpen;
     coachPanel.classList.toggle("hidden", !coachOpen);
-    if (coachOpen) {
-        coachInput.focus();
-    }
+    if (coachOpen) coachInput.focus();
 });
 
 coachClose.addEventListener("click", () => {
@@ -741,13 +739,10 @@ coachClose.addEventListener("click", () => {
     coachPanel.classList.add("hidden");
 });
 
-function addCoachMsg(text, type = "bot") {
+function addCoachMsg(text, type) {
     const div = document.createElement("div");
-    div.className = `coach-msg coach-msg-${type}`;
-    div.innerHTML = `
-        <div class="coach-msg-avatar">${type === "bot" ? "🏆" : "👤"}</div>
-        <div class="coach-msg-content">${text.replace(/\n/g, "<br>")}</div>
-    `;
+    div.className = "coach-msg coach-msg-" + type;
+    div.innerHTML = '<div class="coach-msg-avatar">' + (type === "bot" ? "🏆" : "👤") + '</div><div class="coach-msg-content">' + text.replace(/\n/g, "<br>") + "</div>";
     coachMessages.appendChild(div);
     coachMessages.scrollTop = coachMessages.scrollHeight;
 }
@@ -756,7 +751,7 @@ function showCoachTyping() {
     const div = document.createElement("div");
     div.className = "coach-msg coach-msg-bot";
     div.id = "coach-typing";
-    div.innerHTML = `<div class="coach-msg-avatar">🏆</div><div class="coach-msg-content coach-typing"><span></span><span></span><span></span></div>`;
+    div.innerHTML = '<div class="coach-msg-avatar">🏆</div><div class="coach-msg-content coach-typing"><span></span><span></span><span></span></div>';
     coachMessages.appendChild(div);
     coachMessages.scrollTop = coachMessages.scrollHeight;
 }
@@ -773,15 +768,16 @@ function handleCoachSend() {
     coachInput.value = "";
 
     showCoachTyping();
-    const delay = 300 + Math.random() * 1200;
+    const delay = 300 + Math.random() * 1000;
     setTimeout(() => {
         removeCoachTyping();
-        const response = getCoachResponse(text);
-        addCoachMsg(response, "bot");
+        addCoachMsg(getCoachResponse(text), "bot");
     }, delay);
 }
 
 coachSend.addEventListener("click", handleCoachSend);
-coachInput.addEventListener("keydown", (e) => {
+coachInput.addEventListener("keydown", function (e) {
     if (e.key === "Enter") handleCoachSend();
 });
+
+

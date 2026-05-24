@@ -108,36 +108,33 @@
         </footer>
     </div>
 
-    <!-- AI Coach Chat Widget -->
-    <button id="coach-toggle" class="coach-fab" title="AI Coach">
-        <span class="coach-fab-icon">🏆</span>
-        <span class="coach-fab-label">المدرب</span>
-    </button>
+    <!-- AI Coach -->
+    <button id="coach-toggle" aria-label="المدرب الذكي">🏆</button>
 
-    <div id="coach-panel" class="coach-panel hidden">
-        <div class="coach-header">
-            <div class="coach-header-info">
-                <span class="coach-avatar">🏆</span>
+    <div id="coach-panel" class="hidden">
+        <div id="coach-header">
+            <div id="coach-header-info">
+                <span id="coach-avatar">🏆</span>
                 <div>
-                    <span class="coach-name">RLCS Pro Coach</span>
-                    <span class="coach-status">🟢 متصل</span>
+                    <div id="coach-name">RL Coach</div>
+                    <div id="coach-status">متصل</div>
                 </div>
             </div>
-            <button id="coach-close" class="coach-close">✕</button>
+            <button id="coach-close">✕</button>
         </div>
-        <div class="coach-messages" id="coach-messages">
+        <div id="coach-messages">
             <div class="coach-msg coach-msg-bot">
                 <div class="coach-msg-avatar">🏆</div>
                 <div class="coach-msg-content">
-                    <p>أهلاً! أنا المحلل المحترف. كنت ألعب في RLCS موسم 7 وفزت ببطولات.</p>
-                    <p>أسئلني عن: <strong>الروتنيشن، البوست، الميكانيك، التمركز، أو أي شي يخص روكيت ليق</strong></p>
-                    <p style="font-size:12px;color:#5a6a8a;margin-top:4px;">مثال: "كيف أتطور في 2v2؟" أو "وش مشكلتي مع البوست؟"</p>
+                    مرحباً! أنا مدربك الذكي لـ Rocket League.<br><br>
+                    اسألني عن: الروتنيشن، الميكانيك، البوست، التمركز، التدريب، أو أي شي يخص رفع مستواك.<br><br>
+                    إذا تبغى كودات تدريب، اكتب "كودات" أو "تدريب".
                 </div>
             </div>
         </div>
-        <div class="coach-input-area">
-            <input type="text" id="coach-input" placeholder="اسأل المدرب..." autocomplete="off">
-            <button id="coach-send">⬅️</button>
+        <div id="coach-input-area">
+            <input type="text" id="coach-input" placeholder="اكتب سؤالك هنا..." dir="auto">
+            <button id="coach-send">➤</button>
         </div>
     </div>
 
