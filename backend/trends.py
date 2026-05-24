@@ -82,6 +82,10 @@ def _average_stats(rows):
         avg[key] = sum(vals) / len(vals)
     return avg
 
+import random as _rl_rnd
+def random_choice(items):
+    return _rl_rnd.choice(items)
+
 def _generate_insights(trends, history):
     insights = []
     improved = [t for t in trends.values() if t["improved"]]
@@ -111,125 +115,205 @@ def _generate_insights(trends, history):
             insights.append("💡 نمط متكرر: أهداف تدخل بدفاعك — shadow defense يحتاج شغل")
     return insights
 
+def _team_stats(members):
+    return {
+        "goals": sum(p["stats"]["goals"] for p in members),
+        "assists": sum(p["stats"]["assists"] for p in members),
+        "saves": sum(p["stats"]["saves"] for p in members),
+        "shots": sum(p["stats"]["shots"] for p in members),
+        "score": sum(p["stats"]["score"] for p in members),
+        "boost_avg": sum(p["stats"]["boost_avg"] for p in members) / len(members),
+        "speed_avg": sum(p["stats"]["avg_speed"] for p in members) / len(members),
+        "dist_ball": sum(p["stats"]["dist_ball"] for p in members) / len(members),
+        "dist_mates": sum(p["stats"]["dist_mates"] for p in members) / len(members),
+        "demos_in": sum(p["stats"]["demos_inflicted"] for p in members),
+        "demos_taken": sum(p["stats"]["demos_taken"] for p in members),
+        "boost_collected": sum(p["stats"]["boost_collected"] for p in members),
+        "boost_stolen": sum(p["stats"]["boost_stolen"] for p in members),
+        "zero_boost": sum(p["stats"]["percent_zero_boost"] for p in members) / len(members),
+        "powerslides": sum(p["stats"]["count_powerslide"] for p in members),
+    }
+
 def generate_scrim_team_analysis(players_analysis, game_info):
     teams = {"blue": [], "orange": []}
     for p in players_analysis:
         teams[p.get("team_key", "blue")].append(p)
 
-    # Calculate team goals from player stats (more reliable than API)
-    team_goals = {}
-    for team_key, members in teams.items():
-        team_goals[team_key] = sum(p["stats"]["goals"] for p in members)
+    team_data = {}
+    for tk in ["blue", "orange"]:
+        if teams[tk]:
+            team_data[tk] = _team_stats(teams[tk])
+            team_data[tk]["name"] = game_info.get(f"{tk}_name", tk.title())
 
     analysis = {}
     for team_key in ["blue", "orange"]:
-        members = teams[team_key]
-        if not members:
+        if team_key not in team_data:
             continue
-        team_name = game_info.get(f"{team_key}_name", team_key.title())
-        goals = team_goals.get(team_key, 0)
+        s = team_data[team_key]
         opp_key = "orange" if team_key == "blue" else "blue"
-        opp_goals = team_goals.get(opp_key, 0)
+        opp = team_data.get(opp_key)
 
-        avg_b = sum(p["stats"]["boost_avg"] for p in members) / len(members)
-        avg_sp = sum(p["stats"]["avg_speed"] for p in members) / len(members)
-        avg_db = sum(p["stats"]["dist_ball"] for p in members) / len(members)
-        avg_dm = sum(p["stats"]["dist_mates"] for p in members) / len(members)
-        total_di = sum(p["stats"]["demos_inflicted"] for p in members)
-        total_dt = sum(p["stats"]["demos_taken"] for p in members)
-        total_bc = sum(p["stats"]["boost_collected"] for p in members)
-        total_sh = sum(p["stats"]["shots"] for p in members)
-        total_sv = sum(p["stats"]["saves"] for p in members)
-        total_as = sum(p["stats"]["assists"] for p in members)
-        total_score = sum(p["stats"]["score"] for p in members)
+        goals = s["goals"]
+        opp_goals = opp["goals"] if opp else 0
 
-        team_tips = _generate_team_tips(members, avg_b, avg_dm, avg_sp, total_sh, total_sv, total_di, total_dt, goals, opp_goals)
+        tips = _generate_team_tips(s, opp, team_key)
 
         analysis[team_key] = {
-            "name": team_name,
+            "name": s["name"],
             "goals": goals,
             "opponent_goals": opp_goals,
             "won": goals > opp_goals,
-            "avg_boost": round(avg_b, 1),
-            "avg_speed": round(avg_sp),
-            "avg_distance_ball": round(avg_db),
-            "avg_distance_mates": round(avg_dm),
-            "total_boost": total_bc,
-            "total_shots": total_sh,
-            "total_saves": total_sv,
-            "total_assists": total_as,
-            "total_score": total_score,
-            "demos_inflicted": total_di,
-            "demos_taken": total_dt,
-            "tips": team_tips,
+            "avg_boost": round(s["boost_avg"], 1),
+            "avg_speed": round(s["speed_avg"]),
+            "avg_distance_ball": round(s["dist_ball"]),
+            "avg_distance_mates": round(s["dist_mates"]),
+            "total_boost": s["boost_collected"],
+            "total_shots": s["shots"],
+            "total_saves": s["saves"],
+            "total_assists": s["assists"],
+            "total_score": s["score"],
+            "demos_inflicted": s["demos_in"],
+            "demos_taken": s["demos_taken"],
+            "tips": tips,
         }
 
     return analysis
 
-def _generate_team_tips(members, avg_boost, avg_dist_mates, avg_speed, shots, saves, demos_in, demos_taken, goals_for, goals_against):
+def _generate_team_tips(s, opp, team_key):
     tips = []
+    won = opp is None or s["goals"] > opp["goals"]
+    drew = opp is not None and s["goals"] == opp["goals"]
 
-    if avg_boost < 35:
-        tips.append({
-            "priority": "high",
-            "title": "🔥 الفريق فاضي بوست",
-            "advice": f"معدل بوست الفريق {avg_boost}. صغير. الفريق اللي boost average حقته أقل يخسر. خذوا small pads كفريق."
-        })
+    # ---- REASON: why won / why lost ----
+    if opp is not None:
+        reasons = []
+        diffs = []
 
-    if avg_dist_mates > 3000:
-        tips.append({
-            "priority": "high",
-            "title": "📏 التباعد كبير",
-            "advice": f"معدل المسافة بين اللاعبين {avg_dist_mates}. كبير — التيم مفكك. حاولوا تلعبون قريب عشان الدعم السريع."
-        })
-    elif avg_dist_mates < 600:
-        tips.append({
-            "priority": "medium",
-            "title": "📏 التلزيم الزايد",
-            "advice": f"المسافة بين اللاعبين {avg_dist_mates}. تلزقون في بعض — تفرقوا عشان التغطية."
-        })
+        shot_diff = s["shots"] - opp["shots"]
+        if shot_diff >= 3:
+            reasons.append((random_choice(["🎯 سددتم أكثر", "ضغط هجومي أعلى"]), f"فريقكم سدد {s['shots']} مرة مقابل {opp['shots']} للخصم — {random_choice(['الفرق بالضغط', 'الهجوم المنظم'])} سبب رئيسي."))
+            diffs.append(("shots", shot_diff))
+        elif shot_diff <= -3:
+            reasons.append((random_choice(["🎯 تسديدات أقل", "ما تهددون"]), f"سددتم {s['shots']} بس والخصم {opp['shots']}. الفارق بالضغط الهجومي واضح."))
+            diffs.append(("shots", shot_diff))
 
-    if shots < 5:
-        tips.append({
-            "priority": "high",
-            "title": "🎯 تسديدات قليلة",
-            "advice": f"مجموع التسديدات {shots}. قليل. ما تسددون ما تسجلون — اضغطوا أكثر كفريق."
-        })
+        boost_diff = s["boost_avg"] - opp["boost_avg"]
+        if boost_diff >= 8:
+            reasons.append((random_choice(["⛽ بوست أحسن", "إدارة boost"]), f"معدل boost {s['boost_avg']:.0f} vs {opp['boost_avg']:.0f}. فرق boost كبير — إدارة البوست الجماعية كانت أفضل."))
+            diffs.append(("boost", boost_diff))
+        elif boost_diff <= -8:
+            reasons.append((random_choice(["⛽ بوست أقل", "جوعانين بوست"]), f"معدل boost {s['boost_avg']:.0f} والخصم {opp['boost_avg']:.0f}. فرق {abs(boost_diff):.0f} نقطة — تحتاجون small pads."))
+            diffs.append(("boost", boost_diff))
 
-    if saves < 2 and goals_against > 0:
-        tips.append({
-            "priority": "high",
-            "title": "🛑 دفاع团队的 ضعيف",
-            "advice": f"{saves} تصديات بس. في سكريم الدفاع مسؤولية الجميع — الباك بوست أساسي."
-        })
+        speed_diff = s["speed_avg"] - opp["speed_avg"]
+        if speed_diff >= 200:
+            reasons.append((random_choice(["🚀 أسرع", "السرعة فكتكم"]), f"سرعة فريقكم {s['speed_avg']:.0f} vs {opp['speed_avg']:.0f}. كنتم أسرع — هذا ضغط."))
+            diffs.append(("speed", speed_diff))
+        elif speed_diff <= -200:
+            reasons.append((random_choice(["🐢 أبطأ", "السرعة ناقصة"]), f"سرعة فريقكم {s['speed_avg']:.0f} والخصم {opp['speed_avg']:.0f}. بطيئين — الخصم يضغط أسرع."))
+            diffs.append(("speed", speed_diff))
 
-    if demos_in < 1 and demos_taken > 3:
-        tips.append({
-            "priority": "medium",
-            "title": "💥 ينضربون ديمو",
-            "advice": f"سويتوا {demos_in} ديمو وأخذتوا {demos_taken}. الديمو يكسّر دفاع الخصم — استخدموه."
-        })
+        demo_diff = s["demos_in"] - opp["demos_in"]
+        if demo_diff >= 2:
+            reasons.append((random_choice(["💥 ديمو ملك", "كسرتم صفوفهم"]), f"دمّرتم {s['demos_in']} وأخذتوا {s['demos_taken']}. الديمو فتح لكم المساحة."))
+            diffs.append(("demos", demo_diff))
+        elif demo_diff <= -2:
+            reasons.append((random_choice(["💥 ينضربون ديمو", "صفوفكم مهزوزة"]), f"دمّرتم {s['demos_in']} بس وأخذتوا {s['demos_taken']}. الفرق بالديمو واضح."))
+            diffs.append(("demos", demo_diff))
 
-    if goals_for < goals_against:
-        if avg_speed < 1600:
-            tips.append({
-                "priority": "high",
-                "title": "🐢 بطيئين",
-                "advice": f"معدل سرعة الفريق {avg_speed}. بطيء. في سكريم السرعة الجماعية تفرق — تحركوا أسرع."
-            })
+        save_diff = s["saves"] - opp["saves"]
+        if save_diff >= 2:
+            reasons.append((random_choice(["🛑 دفاع أقوى", "التصديات حمتكم"]), f"تصديات {s['saves']} vs {opp['saves']}. الدفاع كان العامل الحاسم."))
+            diffs.append(("saves", save_diff))
+        elif save_diff <= -2:
+            reasons.append((random_choice(["🛑 دفاع أضعف", "تصديات أقل"]), f"تصديات {s['saves']} والخصم {opp['saves']}. الدفاع خذلكم."))
+            diffs.append(("saves", save_diff))
 
-    if goals_for == 0:
-        tips.append({
-            "priority": "high",
-            "title": "⚽ ما سجلتم",
-            "advice": "صفر أهداف. شوفوا الرتشن — يمكن أحد عالق في الدفاع أو الهجوم غير منظم. حددوا أدواركم."
-        })
+        assist_diff = s["assists"] - opp["assists"]
+        if assist_diff >= 2:
+            reasons.append((random_choice(["🎯 تمريرات أحسن", "لعب جماعي"]), f"تمريرات {s['assists']} vs {opp['assists']}. اللعب الجماعي هو الفرق."))
+            diffs.append(("assists", assist_diff))
+        elif assist_diff <= -2:
+            reasons.append((random_choice(["🎯 تمريرات أقل", "فردي أكثر من جماعي"]), f"تمريرات {s['assists']} والخصم {opp['assists']}. تحتاجون تمرير أكثر."))
+            diffs.append(("assists", assist_diff))
 
+        dist_diff = opp["dist_ball"] - s["dist_ball"]  # positive = 우리 closer
+        if dist_diff >= 400:
+            reasons.append((random_choice(["📍 ضغط أعلى", "قريب من الكرة"]), f"بعدكم عن الكرة {s['dist_ball']:.0f} والخصم {opp['dist_ball']:.0f}. كنتم أقرب — ضغط مستمر."))
+        elif dist_diff <= -400:
+            reasons.append((random_choice(["📍 بعيد عن الكرة", "ضغط منخفض"]), f"بعدكم عن الكرة {s['dist_ball']:.0f} والخصم {opp['dist_ball']:.0f}. الخصم كان أقرب للكرة — يضغطون أكثر."))
+
+        if won and reasons:
+            picked = random_choice(reasons[:3])
+            tips.append({"priority": "low", "title": f"🏆 {picked[0]}", "advice": picked[1]})
+        elif not won and not drew and reasons:
+            picked = random_choice(reasons[:3])
+            tips.append({"priority": "high", "title": f"⚠️ {picked[0]}", "advice": picked[1]})
+
+    # ---- BOOST ----
+    if s["boost_avg"] < 30:
+        tips.append({"priority": "high", "title": random_choice(["🔥 جوعانين بوست", "فاضيين طول الوقت", "بنزين طاف"]), "advice": f"معدل بوست الفريق {s['boost_avg']:.0f}. منخفض جداً. الفريق اللي boost average حقته أقل يخسر. خذوا small pads ووزعوا البوست."})
+    elif s["boost_avg"] < 45:
+        tips.append({"priority": "medium", "title": random_choice(["⛽ بوست متوسط", "محتاجين boost", "جوعانين شوي"]), "advice": f"معدل بوست {s['boost_avg']:.0f}. مقبول بس فيه أحسن — دوروا small pads."})
+
+    # ---- SPACING ----
+    if s["dist_mates"] > 3200:
+        tips.append({"priority": "high", "title": random_choice(["📏 التباعد كبير", "تيم مفكك", "تلعبون لحالكم"]), "advice": f"المسافة بين اللاعبين {s['dist_mates']:.0f}. كبير جداً — التيم مفكك. قربوا عشان الدعم السريع."})
+    elif s["dist_mates"] < 600:
+        tips.append({"priority": "medium", "title": random_choice(["📏 تلزقون ببعض", "ما تتركون مساحة"]), "advice": f"المسافة {s['dist_mates']:.0f}. تلزقون — تفرقوا عشان التغطية."})
+
+    # ---- SHOTS ----
+    if s["shots"] < 4:
+        tips.append({"priority": "high", "title": random_choice(["🎯 ما تسددون", "تسديدات قليلة", "خايفين؟"]), "advice": f"سددتم {s['shots']} تسديدة فقط. ما تهددون — اضغطوا أكثر."})
+    elif s["shots"] > 15 and s["goals"] < 2:
+        tips.append({"priority": "medium", "title": random_choice(["🎯 تسديدات بدون أهداف", "تصيب ولا تخيب"]), "advice": f"{s['shots']} تسديدة ودخل {s['goals']} أهداف. دقة التسديد تيم تحتاج شغل."})
+
+    # ---- SAVES ----
+    if s["saves"] < 2 and (opp and opp["shots"] > 5):
+        tips.append({"priority": "high", "title": random_choice(["🛑 دفاع ضعيف", "تصديات أقل", "المرمى مكشوف"]), "advice": f"{s['saves']} تصديات والخصم سدد {opp['shots']}. دفاع الفريق ضعيف — الباك بوست مسؤولية الجميع."})
+
+    # ---- DEMOS ----
+    if s["demos_in"] < 1 and (opp and opp["demos_in"] > 2):
+        tips.append({"priority": "medium", "title": random_choice(["💥 ينضربون ديمو", "لا تدمّرون"]), "advice": f"دمّرتم {s['demos_in']} وأخذتوا {s['demos_taken']}. الخصم يدمّركم وما تردون — الديمو يفتح المساحة."})
+    elif s["demos_in"] > s["demos_taken"] * 2:
+        tips.append({"priority": "low", "title": random_choice(["💥 دباسة فريق", "دمّرتم الجميع"]), "advice": f"دمّرتم {s['demos_in']} وأخذتوا {s['demos_taken']}. الديمو سلاحكم — استمروا."})
+
+    # ---- SPEED ----
+    if s["speed_avg"] < 1500:
+        tips.append({"priority": "high", "title": random_choice(["🐢 فريق بطيء", "حركوا رجولكم"]), "advice": f"معدل سرعة الفريق {s['speed_avg']:.0f}. بطيئين — السرعة تفرق في السكريم."})
+    elif s["speed_avg"] > 2100 and s["goals"] < 2:
+        tips.append({"priority": "medium", "title": random_choice(["🏃 سريع بس فوضوي", "تهور زايد"]), "advice": f"سرعة {s['speed_avg']:.0f} بس ما استفدتم منها. السرعة بدون تنظيم = فوضى."})
+
+    # ---- ASSISTS ----
+    if s["assists"] < 1 and s["shots"] > 5:
+        tips.append({"priority": "medium", "title": random_choice(["🎯 ما تمررون", "فردي زيادة"]), "advice": f"{s['assists']} تمريرة — ما فيه تمرير. السكريم يعتمد على اللعب الجماعي."})
+
+    # ---- BOOST STEAL ----
+    if s["boost_stolen"] < 30 and (opp and opp["boost_collected"] > 600):
+        tips.append({"priority": "medium", "title": random_choice(["🔫 تسرقون بوست؟", "خلوهم جوعانين"]), "advice": f"سرقتوا {s['boost_stolen']} بس. سرقة boost الخصم يخليهم فاضيين — مهم جداً."})
+
+    # ---- POWERSLIDES ----
+    total_ps = s.get("powerslides", 0)
+    if total_ps > 20:
+        tips.append({"priority": "medium", "title": random_choice(["🌀 Powerslides كثير", "تزحفون زيادة"]), "advice": f"{total_ps} powerslide. دوران زايد — يوديكم خارج البلاي."})
+
+    # ---- GOAL SUMMARY (if won/lost) ----
+    if won and not drew:
+        tips.append({"priority": "low", "title": random_choice(["✅ فوز مستحق", "أداء الفريق"]), "advice": random_choice([
+            "فزتم بفضل الضغط الجماعي والتنظيم. استمروا على نفس المنوال.",
+            "فوز团队. الحمد لله على الأداء — ركزوا على التقليل من الأخطاء الفردية.",
+            "فوز مبروك. اللي خلى الفرق هو الرتشن واللعب كفريق واحد.",
+        ])})
+    elif not won and not drew:
+        tips.append({"priority": "high", "title": random_choice(["❌ أسباب الخسارة", "وش اللي خلاك تخسر؟"]), "advice": random_choice([
+            "الخسارة غالباً بسبب الضعف الجماعي. راجعوا أدواركم وارتشن.",
+            "الخصم كان منظم أكثر. تحتاجون تنسيق أفضل و fast rotation.",
+            "لما تخسر، شوف إحصائيات الفريق فوق. ركزوا على أكبر نقطة ضعف واشتغلوا عليها كتيم.",
+        ])})
+
+    # ---- NO TIPS ----
     if not tips:
-        tips.append({
-            "priority": "low",
-            "title": "✅ أداء فريق كويس",
-            "advice": "إحصائيات الفريق مقبولة. ركزوا على التقليل من الأخطاء الفردية."
-        })
+        tips.append({"priority": "low", "title": random_choice(["✅ أداء فريق كويس", "ممتازين"]), "advice": "إحصائيات الفريق مقبولة. ركزوا على التقليل من الأخطاء الفردية."})
 
+    tips.sort(key=lambda t: {"high": 0, "medium": 1, "low": 2}[t["priority"]])
     return tips
