@@ -91,6 +91,13 @@ def init_db():
 def save_replay(replay_data, game_mode, players_analysis):
     conn = get_db()
     cursor = conn.cursor()
+
+    # Calculate team goals from player stats (more reliable than API)
+    team_goals = {"blue": 0, "orange": 0}
+    for p in players_analysis:
+        tk = p.get("team_key", "blue")
+        team_goals[tk] = team_goals.get(tk, 0) + p["stats"]["goals"]
+
     cursor.execute("""
         INSERT INTO replays (replay_id, game_mode, map_name, duration, overtime,
                             playlist, blue_name, orange_name, blue_goals, orange_goals)
@@ -104,8 +111,8 @@ def save_replay(replay_data, game_mode, players_analysis):
         replay_data.get("playlist_name", ""),
         replay_data.get("blue", {}).get("name", "Blue"),
         replay_data.get("orange", {}).get("name", "Orange"),
-        replay_data.get("blue", {}).get("goals", 0),
-        replay_data.get("orange", {}).get("goals", 0),
+        team_goals.get("blue", 0),
+        team_goals.get("orange", 0),
     ))
     replay_pk = cursor.lastrowid
 
@@ -155,12 +162,16 @@ def _save_team_stats(cursor, replay_pk, replay_data, players_analysis):
     for p in players_analysis:
         teams[p.get("team_key", "blue")].append(p)
 
+    team_goals_map = {}
+    for tk, members in teams.items():
+        team_goals_map[tk] = sum(p["stats"]["goals"] for p in members)
+
     for team_key in ["blue", "orange"]:
         members = teams[team_key]
         if not members:
             continue
         team_name = replay_data.get(team_key, {}).get("name", team_key.title())
-        team_goals = replay_data.get(team_key, {}).get("goals", 0)
+        team_goals = team_goals_map.get(team_key, 0)
         avg_b = sum(p["stats"]["boost_avg"] for p in members) / len(members)
         avg_sp = sum(p["stats"]["avg_speed"] for p in members) / len(members)
         avg_db = sum(p["stats"]["dist_ball"] for p in members) / len(members)

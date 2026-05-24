@@ -116,15 +116,20 @@ def generate_scrim_team_analysis(players_analysis, game_info):
     for p in players_analysis:
         teams[p.get("team_key", "blue")].append(p)
 
+    # Calculate team goals from player stats (more reliable than API)
+    team_goals = {}
+    for team_key, members in teams.items():
+        team_goals[team_key] = sum(p["stats"]["goals"] for p in members)
+
     analysis = {}
     for team_key in ["blue", "orange"]:
         members = teams[team_key]
         if not members:
             continue
         team_name = game_info.get(f"{team_key}_name", team_key.title())
-        goals = game_info.get(f"{team_key}_goals", 0)
+        goals = team_goals.get(team_key, 0)
         opp_key = "orange" if team_key == "blue" else "blue"
-        opp_goals = game_info.get(f"{opp_key}_goals", 0)
+        opp_goals = team_goals.get(opp_key, 0)
 
         avg_b = sum(p["stats"]["boost_avg"] for p in members) / len(members)
         avg_sp = sum(p["stats"]["avg_speed"] for p in members) / len(members)
