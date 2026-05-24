@@ -13,6 +13,26 @@ BALLCHASING_API = "https://ballchasing.com/api"
 
 HEADERS = {}
 
+MODE_KEYWORDS = {
+    "1v1": ["duel", "1v1", "1 vs 1", "1v1"],
+    "2v2": ["double", "2v2", "2 vs 2"],
+    "3v3": ["standard", "3v3", "3 vs 3", "solo standard"],
+}
+
+def detect_game_mode(data):
+    playlist = data.get("playlist_name", "").lower()
+    for mode, keywords in MODE_KEYWORDS.items():
+        if any(k in playlist for k in keywords):
+            return mode
+    blue_n = len(data.get("blue", {}).get("players", []))
+    orange_n = len(data.get("orange", {}).get("players", []))
+    max_p = max(blue_n, orange_n)
+    if max_p <= 1: return "1v1"
+    if max_p == 2: return "2v2"
+    return "3v3"
+
+MODE_LABELS = {"1v1": "فردي 1v1", "2v2": "زوجي 2v2", "3v3": "فريق 3v3"}
+
 init_db()
 
 @app.route("/api/set-key", methods=["POST"])
@@ -72,6 +92,14 @@ def analyze_replay():
                 data = r2.json()
                 if data.get("status") == "ok" or "goals" in data.get("blue", {}):
                     break
+
+        actual_mode = detect_game_mode(data)
+        if game_mode != "scrim" and actual_mode != game_mode:
+            actual_label = MODE_LABELS.get(actual_mode, actual_mode)
+            selected_label = MODE_LABELS.get(game_mode, game_mode)
+            return jsonify({
+                "error": f"❌ خطأ في اختيار الطور!\nالريبلاي هذا {actual_label} مو {selected_label}.\nغير الطور إلى {actual_label} وحاول مرة ثانية."
+            }), 400
 
         analyzer = RocketLeagueAnalyzer(data, game_mode)
         results = analyzer.analyze()

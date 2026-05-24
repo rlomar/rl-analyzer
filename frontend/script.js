@@ -324,7 +324,7 @@ function loadPlayerHistory(playerName) {
 function showError(msg) {
     errorSection.classList.remove("hidden");
     resultsSection.classList.add("hidden");
-    errorMessage.textContent = msg;
+    errorMessage.innerHTML = msg.replace(/\n/g, "<br>");
 }
 
 function resetApp() {
