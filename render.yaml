@@ -9,4 +9,12 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11
-    healthCheckPath: /
+      - key: DATABASE_URL
+        fromDatabase:
+          name: rl-analyzer-db
+          property: connectionString
+databases:
+  - name: rl-analyzer-db
+    plan: free
+    databaseName: rlanalyzer
+    ipAllowList: []
