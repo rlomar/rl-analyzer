@@ -111,6 +111,7 @@ h1 span {
 .hero-box span { font-size: 18px; }
 
 .card {
+    transition: all 0.25s ease;
     background: rgba(15,20,35,0.75);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255,255,255,0.05);
@@ -230,6 +231,7 @@ h1 span {
     justify-content: flex-end;
 }
 .btn-auth {
+    transition: all 0.25s ease;
     padding: 7px 16px !important;
     font-size: 13px !important;
     white-space: nowrap;
@@ -580,6 +582,7 @@ h1 span {
     margin-bottom: 28px;
 }
 .tab {
+    transition: all 0.25s ease;
     background: rgba(255,255,255,0.04);
     border: none;
     padding: 12px 20px;
@@ -662,6 +665,7 @@ h1 span {
 .match-item.loss p { color: #ff5252; }
 .match-score { font-size: 14px; font-weight: 700; color: #5b8cff; }
 .stat-card {
+    transition: all 0.25s ease;
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,255,255,0.05);
     border-radius: 22px;
@@ -698,6 +702,7 @@ h1 span {
     margin-bottom: 20px;
 }
 .profile-stat {
+    transition: all 0.25s ease;
     background: rgba(0,0,0,0.3);
     border-radius: 12px;
     padding: 16px 12px;
@@ -1088,6 +1093,7 @@ h1 span {
 }
 
 .btn {
+    transition: all 0.25s ease;
     background: linear-gradient(135deg, #5b8cff, #7a5cff);
     color: #fff;
     border: none;
