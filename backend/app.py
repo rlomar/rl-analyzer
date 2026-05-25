@@ -27,8 +27,18 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 CORS(app, supports_credentials=True)
 
-# Admin config — set env var ADMIN_USERNAME to your username to access admin panel
+# Admin — first user to register becomes admin automatically
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "")
+if not ADMIN_USERNAME:
+    from database import get_db as _gdb
+    try:
+        _c = _gdb()
+        _r = _c.execute("SELECT username FROM users WHERE is_admin = 1 ORDER BY id ASC LIMIT 1").fetchone()
+        if _r:
+            ADMIN_USERNAME = _r["username"]
+        _c.close()
+    except Exception:
+        pass
 
 UPLOAD_FOLDER = tempfile.gettempdir()
 os.makedirs(REPLAY_STORAGE, exist_ok=True)

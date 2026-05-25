@@ -23,15 +23,18 @@ def create_user(username, password=None, steam_id=None, epic_id=None):
     conn = get_db()
     try:
         tag = _generate_hash_tag(conn)
+        # First user becomes admin automatically
+        is_first = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
+        is_admin = 1 if is_first else 0
         if steam_id:
-            conn.execute("INSERT INTO users (username, steam_id, hash_tag) VALUES (?, ?, ?)",
-                          (username, steam_id, tag))
+            conn.execute("INSERT INTO users (username, steam_id, hash_tag, is_admin) VALUES (?, ?, ?, ?)",
+                          (username, steam_id, tag, is_admin))
         elif epic_id:
-            conn.execute("INSERT INTO users (username, epic_id, hash_tag) VALUES (?, ?, ?)",
-                          (username, epic_id, tag))
+            conn.execute("INSERT INTO users (username, epic_id, hash_tag, is_admin) VALUES (?, ?, ?, ?)",
+                          (username, epic_id, tag, is_admin))
         else:
-            conn.execute("INSERT INTO users (username, password, hash_tag) VALUES (?, ?, ?)",
-                          (username, generate_password_hash(password), tag))
+            conn.execute("INSERT INTO users (username, password, hash_tag, is_admin) VALUES (?, ?, ?, ?)",
+                          (username, generate_password_hash(password), tag, is_admin))
         conn.commit()
         uid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         return uid
@@ -106,6 +109,7 @@ def init_db():
             display_name TEXT,
             avatar TEXT,
             bio TEXT,
+            is_admin INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS replays (
@@ -202,6 +206,19 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_replays_user ON replays(user_id);
         CREATE INDEX IF NOT EXISTS idx_users_hash_tag ON users(hash_tag);
     """)
+    # Migrations for old databases (add missing columns/tables)
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("CREATE TABLE IF NOT EXISTS page_visits (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT, user_id INTEGER, ip TEXT, user_agent TEXT, visited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("CREATE TABLE IF NOT EXISTS user_settings (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE REFERENCES users(id), preferred_mode TEXT DEFAULT '3v3', auto_link_player INTEGER DEFAULT 0, show_team_analysis INTEGER DEFAULT 1, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
 
