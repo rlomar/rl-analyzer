@@ -2,7 +2,7 @@ import os, json, tempfile, time
 from flask import Flask, request, jsonify, send_from_directory, session
 from flask_cors import CORS
 from analyzer import RocketLeagueAnalyzer
-from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, set_user_display_name, update_last_replay_player_name
+from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, set_user_display_name, update_last_replay_player_name
 from urllib.parse import urlencode
 from trends import analyze_trends, generate_scrim_team_analysis
 
@@ -46,7 +46,7 @@ def get_db_user_id(username):
     from database import get_db
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, username, display_name FROM users WHERE username = ?", (username,))
+    cursor.execute("SELECT id, username, display_name, hash_tag FROM users WHERE username = ?", (username,))
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
@@ -87,33 +87,82 @@ def api_auth_steam_callback():
 @app.route("/api/auth/epic")
 def api_auth_epic():
     base = request.host_url.rstrip("/")
-    params = urlencode({
-        "openid.ns": "http://specs.openid.net/auth/2.0",
-        "openid.mode": "checkid_setup",
-        "openid.return_to": f"{base}/api/auth/epic/callback",
-        "openid.realm": base,
-        "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
-        "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
-    })
-    return jsonify({"url": f"{STEAM_OPENID}?{params}"})
+    return jsonify({"url": f"{base}/api/auth/epic-form"})
 
-@app.route("/api/auth/epic/callback")
-def api_auth_epic_callback():
-    args = request.args
-    if args.get("openid.mode") == "id_res":
-        eid = args.get("openid.claimed_id", "").replace("https://steamcommunity.com/openid/id/", "")
-        if eid:
-            user = get_user_by_epic(eid)
-            if user:
-                session["user"] = user["username"]
-                session["user_id"] = user["id"]
-            else:
-                uid = create_user(f"epic_{eid}", epic_id=eid)
-                if uid:
-                    session["user"] = f"epic_{eid}"
-                    session["user_id"] = uid
-            return '<script>if(window.opener){window.opener.postMessage("epic-login-success","*");window.close()}else{location="/"}</script>'
-    return '<script>if(window.opener)window.close();else location="/"</script>'
+@app.route("/api/auth/epic-form")
+def epic_login_form():
+    return '''
+    <!DOCTYPE html>
+    <html dir="rtl">
+    <head><meta charset="UTF-8"><title>Epic Games - تسجيل</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:Tahoma,Arial,sans-serif; background:#0a0e17; color:#e0e0e0; display:flex; align-items:center; justify-content:center; min-height:100vh; }
+        .card { background:#131a2b; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:30px; width:340px; text-align:center; }
+        .card h2 { margin-bottom:8px; color:#fff; font-size:20px; }
+        .card p { color:#8892b0; font-size:13px; margin-bottom:20px; }
+        input { width:100%; padding:12px 16px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:#fff; font-size:14px; margin-bottom:12px; text-align:center; }
+        button { width:100%; padding:12px; border-radius:10px; border:none; background:linear-gradient(135deg,#2a2a2a,#404040); color:#fff; font-size:14px; font-weight:700; cursor:pointer; }
+        button:hover { background:linear-gradient(135deg,#404040,#555); }
+        .error { color:#ff1744; font-size:13px; margin-bottom:10px; display:none; }
+    </style>
+    </head><body>
+    <div class="card">
+        <h2>⭐ تسجيل عبر Epic Games</h2>
+        <p>اكتب اسم المستخدم في Epic Games</p>
+        <form action="/api/auth/epic/complete" method="POST" id="epic-form">
+            <input type="text" name="epic_name" placeholder="Epic Games display name" required>
+            <p class="error" id="epic-error"></p>
+            <button type="submit">تسجيل</button>
+        </form>
+    </div>
+    <script>
+        document.getElementById("epic-form").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            const name = this.epic_name.value.trim();
+            if (!name) return;
+            try {
+                const r = await fetch("/api/auth/epic/complete", {
+                    method:"POST",
+                    headers:{"Content-Type":"application/json"},
+                    body: JSON.stringify({epic_name: name})
+                });
+                const d = await r.json();
+                if (d.success) {
+                    if (window.opener) { window.opener.postMessage("epic-login-success","*"); window.close(); }
+                    else location.href = "/";
+                } else {
+                    document.getElementById("epic-error").textContent = d.error;
+                    document.getElementById("epic-error").style.display = "block";
+                }
+            } catch(e) {
+                document.getElementById("epic-error").textContent = "خطأ في الاتصال";
+                document.getElementById("epic-error").style.display = "block";
+            }
+        });
+    </script>
+    </body></html>
+    '''
+
+@app.route("/api/auth/epic/complete", methods=["POST"])
+def epic_login_complete():
+    data = request.get_json()
+    epic_name = data.get("epic_name", "").strip() if data else ""
+    if not epic_name:
+        return jsonify({"error": "الاسم مطلوب"}), 400
+    user = get_user_by_epic(epic_name)
+    if user:
+        session["user"] = user["username"]
+        session["user_id"] = user["id"]
+    else:
+        uid = create_user(f"epic_{epic_name.replace(' ','_')}", epic_id=epic_name)
+        if uid:
+            session["user"] = f"epic_{epic_name.replace(' ','_')}"
+            session["user_id"] = uid
+            set_user_display_name(uid, epic_name)
+        else:
+            return jsonify({"error": "فشل إنشاء الحساب"}), 500
+    return jsonify({"success": True})
 
 # ── USER PROFILE & SETTINGS ─────────────────
 @app.route("/api/user/profile", methods=["GET"])
@@ -125,10 +174,14 @@ def api_user_profile():
     stats = get_user_aggregated_stats(uid)
     settings = get_user_settings(uid)
     recent = get_user_recent_replays(uid, limit=5)
+    tag = info.get("hash_tag", "") if info else ""
+    display = info.get("display_name") or (info.get("username") if info else None)
     return jsonify({
         "user": {
             "username": info["username"] if info else None,
-            "display_name": info["display_name"] if info else None,
+            "display_name": display,
+            "hash_tag": tag,
+            "tagged_name": f"{display}#{tag}" if display and tag else display,
         },
         "stats": stats,
         "settings": settings,
@@ -204,10 +257,14 @@ def api_me():
     if info:
         from database import get_user_settings as _gus
         settings = _gus(info["id"])
+        tag = info.get("hash_tag", "")
+        display = info.get("display_name") or info.get("username", "")
         return jsonify({
             "user": session["user"],
             "user_id": info["id"],
-            "display_name": info["display_name"],
+            "display_name": display,
+            "hash_tag": tag,
+            "tagged_name": f"{display}#{tag}" if tag else display,
             "settings": settings,
         })
     return jsonify({"user": None})
@@ -342,6 +399,21 @@ def api_trends(player_name):
     if not summary:
         return jsonify({"error": "ما فيه معلومات كافية عن هذا اللاعب", "games": 0}), 404
     return jsonify(summary)
+
+@app.route("/api/players/search", methods=["GET"])
+def api_players_search():
+    query = request.args.get("q", "").strip()
+    if len(query) < 1:
+        return jsonify({"players": []})
+    results = search_players(query)
+    return jsonify({"players": results})
+
+@app.route("/api/players/profile/<player_name>", methods=["GET"])
+def api_player_profile(player_name):
+    stats, games = get_player_full_profile(player_name)
+    if not stats or not stats.get("total_games"):
+        return jsonify({"error": "لا توجد بيانات لهذا اللاعب"}), 404
+    return jsonify({"stats": stats, "games": games})
 
 @app.route("/api/user/history", methods=["GET"])
 def api_user_history():

@@ -56,13 +56,28 @@ function checkAuth() {
             if (data.user) {
                 document.getElementById("auth-logged-out").classList.add("hidden");
                 document.getElementById("auth-logged-in").classList.remove("hidden");
-                const displayName = data.display_name || data.user;
+                const displayName = data.tagged_name || data.display_name || data.user;
                 document.getElementById("auth-username").textContent = getProviderIcon(data.user) + " " + displayName;
             }
         })
         .catch(() => {});
 }
 
+// ── User Menu (Hamburger) ──────────────
+function toggleUserMenu() {
+    const menu = document.getElementById("user-menu");
+    menu.classList.toggle("hidden");
+}
+
+document.addEventListener("click", function(e) {
+    const menu = document.getElementById("user-menu");
+    const toggle = document.getElementById("menu-toggle");
+    if (!menu.classList.contains("hidden") && !menu.contains(e.target) && !toggle.contains(e.target)) {
+        menu.classList.add("hidden");
+    }
+});
+
+// ── Auth Modal ─────────────────────────
 function showAuthModal(mode) {
     authMode = mode;
     document.getElementById("auth-modal").classList.remove("hidden");
@@ -114,12 +129,14 @@ function logoutUser() {
         .then(() => {
             document.getElementById("auth-logged-out").classList.remove("hidden");
             document.getElementById("auth-logged-in").classList.add("hidden");
+            document.getElementById("user-menu").classList.add("hidden");
         })
         .catch(() => {});
 }
 
 checkAuth();
 
+// ── API Key ────────────────────────────
 function saveApiKey() {
     const key = apiInput.value.trim();
     if (!key) { alert("اكتب مفتاح API أول"); return; }
@@ -140,6 +157,7 @@ function saveApiKey() {
     .catch(() => alert("فشل حفظ المفتاح. شغل السيرفر أول."));
 }
 
+// ── File Upload ────────────────────────
 dropZone.addEventListener("click", () => fileInput.click());
 dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
@@ -186,6 +204,7 @@ function handleFile(file) {
     });
 }
 
+// ── Results Display ────────────────────
 function showResults(data) {
     resultsSection.classList.remove("hidden");
     errorSection.classList.add("hidden");
@@ -203,11 +222,9 @@ function showResults(data) {
         ${game.overtime ? `<div class="game-stat"><span class="label">⏱</span><span class="value" style="color:#ff1744">وقت إضافي!</span></div>` : ""}
     `;
 
-    // Trends
     const trends = data.trends || {};
     renderTrends(trends);
 
-    // Players
     let html = "";
     players.forEach((p, i) => {
         const s = p.stats;
@@ -223,39 +240,7 @@ function showResults(data) {
             <div class="trends-mini">
                 ${pTrends.insights.map(i => `<span class="trend-insight">${i}</span>`).join("")}
             </div>` : ""}
-            <div class="stats-grid">
-                <div class="stat-item"><span class="stat-label">⚽ أهداف</span><span class="stat-value">${s.goals}</span></div>
-                <div class="stat-item"><span class="stat-label">🎯 تمريرات</span><span class="stat-value">${s.assists}</span></div>
-                <div class="stat-item"><span class="stat-label">🛑 تصديات</span><span class="stat-value">${s.saves}</span></div>
-                <div class="stat-item"><span class="stat-label">🔫 تسديدات</span><span class="stat-value">${s.shots}</span></div>
-                <div class="stat-item"><span class="stat-label">📊 دقة التسديد</span><span class="stat-value ${s.shooting_pct < 20 && s.shots > 2 ? "bad" : s.shooting_pct > 40 ? "good" : "warn"}">${s.shooting_pct}%</span></div>
-                <div class="stat-item"><span class="stat-label">⭐ سكور</span><span class="stat-value">${s.score}</span></div>
-                <div class="stat-item"><span class="stat-label">⛽ بوست (وسط)</span><span class="stat-value ${s.boost_avg < 30 ? "bad" : s.boost_avg < 50 ? "warn" : "good"}">${s.boost_avg}</span></div>
-                <div class="stat-item"><span class="stat-label">📦 بوست مجمع</span><span class="stat-value">${s.boost_collected}</span></div>
-                <div class="stat-item"><span class="stat-label">🔫 بوست مسروق</span><span class="stat-value">${s.boost_stolen}</span></div>
-                <div class="stat-item"><span class="stat-label">🟦 بودات كبيرة</span><span class="stat-value">${s.count_big_pads}</span></div>
-                <div class="stat-item"><span class="stat-label">🟩 بودات صغيرة</span><span class="stat-value">${s.count_small_pads}</span></div>
-                <div class="stat-item"><span class="stat-label">🗑️ بوست مهدر supersonic</span><span class="stat-value ${s.boost_wasted_pct > 15 ? "bad" : "warn"}">${s.boost_wasted_pct}%</span></div>
-                <div class="stat-item"><span class="stat-label">🪫 وقت 0 بوست</span><span class="stat-value ${s.percent_zero_boost > 15 ? "bad" : "warn"}">${s.percent_zero_boost}%</span></div>
-                <div class="stat-item"><span class="stat-label">🔵 Full boost</span><span class="stat-value">${s.percent_full_boost}%</span></div>
-                <div class="stat-item"><span class="stat-label">♻️ Overfill</span><span class="stat-value ${s.overfill_pct > 10 ? "bad" : "warn"}">${s.overfill_pct}%</span></div>
-                <div class="stat-item"><span class="stat-label">🏃 سرعة وسط</span><span class="stat-value ${s.avg_speed < 1500 ? "warn" : "good"}">${s.avg_speed}</span></div>
-                <div class="stat-item"><span class="stat-label">💨 Supersonic</span><span class="stat-value">${s.percent_supersonic}%</span></div>
-                <div class="stat-item"><span class="stat-label">🚶 بطيء</span><span class="stat-value">${s.time_slow_speed}ث</span></div>
-                <div class="stat-item"><span class="stat-label">🌍 على الأرض</span><span class="stat-value">${s.ground_pct}%</span></div>
-                <div class="stat-item"><span class="stat-label">🕊️ في الجو</span><span class="stat-value">${s.air_pct}%</span></div>
-                <div class="stat-item"><span class="stat-label">🎯 High aerials</span><span class="stat-value">${s.time_high_air}ث</span></div>
-                <div class="stat-item"><span class="stat-label">⚔️ هجوم</span><span class="stat-value" style="color:#4a9eff">${s.percent_offensive}%</span></div>
-                <div class="stat-item"><span class="stat-label">🛡️ دفاع</span><span class="stat-value" style="color:#ff8c33">${s.percent_defensive}%</span></div>
-                <div class="stat-item"><span class="stat-label">📍 مسافة للكرة</span><span class="stat-value">${s.dist_ball}</span></div>
-                <div class="stat-item"><span class="stat-label">👥 مسافة للفريق</span><span class="stat-value">${s.dist_mates}</span></div>
-                <div class="stat-item"><span class="stat-label">🔙 ورا الكرة</span><span class="stat-value">${s.time_behind_ball}ث</span></div>
-                <div class="stat-item"><span class="stat-label">🔜 قدام الكرة</span><span class="stat-value">${s.time_infront_ball}ث</span></div>
-                <div class="stat-item"><span class="stat-label">💥 ديمو سويته</span><span class="stat-value">${s.demos_inflicted}</span></div>
-                <div class="stat-item"><span class="stat-label">💀 ديمو أخذته</span><span class="stat-value">${s.demos_taken}</span></div>
-                <div class="stat-item"><span class="stat-label">🌀 Powerslides</span><span class="stat-value">${s.count_powerslide}</span></div>
-                ${s.goals_against_last_defender ? `<div class="stat-item"><span class="stat-label">🔥 أهداف بدفاعي</span><span class="stat-value" style="color:#ff1744;font-weight:900">${s.goals_against_last_defender}</span></div>` : ""}
-            </div>
+            <div class="stats-grid">${renderStatsGrid(s)}</div>
             <div class="tips-section">
                 <h3>💡 نصائح مخصصة — بدون مجاملة</h3>
                 ${p.tips.map(t => `
@@ -273,53 +258,66 @@ function showResults(data) {
     });
     document.getElementById("players-results").innerHTML = html;
 
-    // Team analysis (scrim)
-    if (data.team_analysis) {
-        renderTeamAnalysis(data.team_analysis);
-    }
-
-    // Load history for first player
-    if (players.length > 0) {
-        loadPlayerHistory(players[0].name);
-    }
-
+    if (data.team_analysis) renderTeamAnalysis(data.team_analysis);
+    if (players.length > 0) loadPlayerHistory(players[0].name);
     resultsSection.scrollIntoView({ behavior: "smooth" });
+}
+
+function renderStatsGrid(s) {
+    return `
+        <div class="stat-item"><span class="stat-label">⚽ أهداف</span><span class="stat-value">${s.goals}</span></div>
+        <div class="stat-item"><span class="stat-label">🎯 تمريرات</span><span class="stat-value">${s.assists}</span></div>
+        <div class="stat-item"><span class="stat-label">🛑 تصديات</span><span class="stat-value">${s.saves}</span></div>
+        <div class="stat-item"><span class="stat-label">🔫 تسديدات</span><span class="stat-value">${s.shots}</span></div>
+        <div class="stat-item"><span class="stat-label">📊 دقة التسديد</span><span class="stat-value ${s.shooting_pct < 20 && s.shots > 2 ? "bad" : s.shooting_pct > 40 ? "good" : "warn"}">${s.shooting_pct}%</span></div>
+        <div class="stat-item"><span class="stat-label">⭐ سكور</span><span class="stat-value">${s.score}</span></div>
+        <div class="stat-item"><span class="stat-label">⛽ بوست (وسط)</span><span class="stat-value ${s.boost_avg < 30 ? "bad" : s.boost_avg < 50 ? "warn" : "good"}">${s.boost_avg}</span></div>
+        <div class="stat-item"><span class="stat-label">📦 بوست مجمع</span><span class="stat-value">${s.boost_collected}</span></div>
+        <div class="stat-item"><span class="stat-label">🔫 بوست مسروق</span><span class="stat-value">${s.boost_stolen}</span></div>
+        <div class="stat-item"><span class="stat-label">🟦 بودات كبيرة</span><span class="stat-value">${s.count_big_pads}</span></div>
+        <div class="stat-item"><span class="stat-label">🟩 بودات صغيرة</span><span class="stat-value">${s.count_small_pads}</span></div>
+        <div class="stat-item"><span class="stat-label">🗑️ بوست مهدر</span><span class="stat-value ${s.boost_wasted_pct > 15 ? "bad" : "warn"}">${s.boost_wasted_pct}%</span></div>
+        <div class="stat-item"><span class="stat-label">🪫 وقت 0 بوست</span><span class="stat-value ${s.percent_zero_boost > 15 ? "bad" : "warn"}">${s.percent_zero_boost}%</span></div>
+        <div class="stat-item"><span class="stat-label">🔵 Full boost</span><span class="stat-value">${s.percent_full_boost}%</span></div>
+        <div class="stat-item"><span class="stat-label">♻️ Overfill</span><span class="stat-value ${s.overfill_pct > 10 ? "bad" : "warn"}">${s.overfill_pct}%</span></div>
+        <div class="stat-item"><span class="stat-label">🏃 سرعة وسط</span><span class="stat-value ${s.avg_speed < 1500 ? "warn" : "good"}">${s.avg_speed}</span></div>
+        <div class="stat-item"><span class="stat-label">💨 Supersonic</span><span class="stat-value">${s.percent_supersonic}%</span></div>
+        <div class="stat-item"><span class="stat-label">🚶 بطيء</span><span class="stat-value">${s.time_slow_speed}ث</span></div>
+        <div class="stat-item"><span class="stat-label">🌍 على الأرض</span><span class="stat-value">${s.ground_pct}%</span></div>
+        <div class="stat-item"><span class="stat-label">🕊️ في الجو</span><span class="stat-value">${s.air_pct}%</span></div>
+        <div class="stat-item"><span class="stat-label">🎯 High aerials</span><span class="stat-value">${s.time_high_air}ث</span></div>
+        <div class="stat-item"><span class="stat-label">⚔️ هجوم</span><span class="stat-value" style="color:#4a9eff">${s.percent_offensive}%</span></div>
+        <div class="stat-item"><span class="stat-label">🛡️ دفاع</span><span class="stat-value" style="color:#ff8c33">${s.percent_defensive}%</span></div>
+        <div class="stat-item"><span class="stat-label">📍 مسافة للكرة</span><span class="stat-value">${s.dist_ball}</span></div>
+        <div class="stat-item"><span class="stat-label">👥 مسافة للفريق</span><span class="stat-value">${s.dist_mates}</span></div>
+        <div class="stat-item"><span class="stat-label">🔙 ورا الكرة</span><span class="stat-value">${s.time_behind_ball}ث</span></div>
+        <div class="stat-item"><span class="stat-label">🔜 قدام الكرة</span><span class="stat-value">${s.time_infront_ball}ث</span></div>
+        <div class="stat-item"><span class="stat-label">💥 ديمو سويته</span><span class="stat-value">${s.demos_inflicted}</span></div>
+        <div class="stat-item"><span class="stat-label">💀 ديمو أخذته</span><span class="stat-value">${s.demos_taken}</span></div>
+        <div class="stat-item"><span class="stat-label">🌀 Powerslides</span><span class="stat-value">${s.count_powerslide}</span></div>
+        ${s.goals_against_last_defender ? `<div class="stat-item"><span class="stat-label">🔥 أهداف بدفاعي</span><span class="stat-value" style="color:#ff1744;font-weight:900">${s.goals_against_last_defender}</span></div>` : ""}
+    `;
 }
 
 function renderTrends(trends) {
     const section = document.getElementById("trends-section");
     const names = Object.keys(trends);
     if (!names.length) { section.classList.add("hidden"); return; }
-
     let cards = "";
     for (const name of names) {
         const t = trends[name];
         if (!t.insights || !t.insights.length) continue;
-        cards += `
-        <div class="trends-card">
-            <div class="trends-player-name">📈 ${name} — ${t.games_analyzed} مباريات</div>
-            <div class="trends-insights">
-                ${t.insights.map(i => `<div class="trend-insight">${i}</div>`).join("")}
-            </div>
-        </div>`;
+        cards += `<div class="trends-card"><div class="trends-player-name">📈 ${name} — ${t.games_analyzed} مباريات</div><div class="trends-insights">${t.insights.map(i => `<div class="trend-insight">${i}</div>`).join("")}</div></div>`;
     }
-
     if (cards) {
-        section.innerHTML = `
-            <div class="card">
-                <h2>📊 تطور المستوى</h2>
-                <div class="trends-grid">${cards}</div>
-            </div>`;
+        section.innerHTML = `<div class="card"><h2>📊 تطور المستوى</h2><div class="trends-grid">${cards}</div></div>`;
         section.classList.remove("hidden");
-    } else {
-        section.classList.add("hidden");
-    }
+    } else section.classList.add("hidden");
 }
 
 function renderTeamAnalysis(teamData) {
     const section = document.getElementById("team-section");
     section.classList.remove("hidden");
-
     const modeLabel = gameMode === "scrim" ? "سكريم" : "3v3";
     let html = `<div class="card"><h2>🏆 تحليل الفريق — ${modeLabel}</h2><div class="team-grid">`;
     for (const key of ["blue", "orange"]) {
@@ -327,10 +325,9 @@ function renderTeamAnalysis(teamData) {
         if (!t) continue;
         const won = t.goals > t.opponent_goals;
         const drawn = t.goals === t.opponent_goals;
-        const resultClass = drawn ? "team-drawn" : (won ? "team-won" : "team-lost");
         const icon = won ? "✅" : (drawn ? "⚖️" : "❌");
         html += `
-        <div class="team-card ${resultClass}">
+        <div class="team-card ${won ? "team-won" : drawn ? "team-drawn" : "team-lost"}">
             <div class="team-header">
                 <span class="team-name" style="color:${key === "blue" ? "#4a9eff" : "#ff8c33"}">${t.name}</span>
                 <span class="team-result">${t.goals} - ${t.opponent_goals} ${icon}</span>
@@ -348,15 +345,7 @@ function renderTeamAnalysis(teamData) {
             </div>
             <div class="tips-section">
                 <h3>💡 نصائح الفريق</h3>
-                ${t.tips.map(tip => `
-                    <div class="tip-card priority-${tip.priority}">
-                        <div class="tip-header">
-                            <span class="tip-title">${tip.title}</span>
-                            <span class="tip-priority ${tip.priority}">${tip.priority === "high" ? "🚨 مهم" : tip.priority === "medium" ? "⚡ متوسط" : "✅ ممتاز"}</span>
-                        </div>
-                        <p class="tip-advice">${tip.advice}</p>
-                    </div>
-                `).join("")}
+                ${t.tips.map(tip => `<div class="tip-card priority-${tip.priority}"><div class="tip-header"><span class="tip-title">${tip.title}</span><span class="tip-priority ${tip.priority}">${tip.priority === "high" ? "🚨 مهم" : tip.priority === "medium" ? "⚡ متوسط" : "✅ ممتاز"}</span></div><p class="tip-advice">${tip.advice}</p></div>`).join("")}
             </div>
         </div>`;
     }
@@ -370,37 +359,15 @@ function loadPlayerHistory(playerName) {
     fetch(`/api/history/${encodeURIComponent(playerName)}?mode=${gameMode}`)
         .then(r => r.json())
         .then(data => {
-            if (!data.history || !data.history.length) {
-                section.classList.add("hidden");
-                return;
-            }
+            if (!data.history || !data.history.length) { section.classList.add("hidden"); return; }
             section.classList.remove("hidden");
             const h = data.history;
             let rows = h.map((g, i) => {
                 const won = (g.team === "blue" && g.blue_goals > g.orange_goals) || (g.team === "orange" && g.orange_goals > g.blue_goals);
                 const drawn = g.blue_goals === g.orange_goals;
-                return `
-                <tr>
-                    <td>#${h.length - i}</td>
-                    <td>${g.map_name || "-"}</td>
-                    <td>${g.goals} / ${g.assists} / ${g.saves}</td>
-                    <td>${g.shooting_pct}%</td>
-                    <td>${g.boost_avg}</td>
-                    <td>${g.score}</td>
-                    <td style="color:${won ? "#00c853" : drawn ? "#ffab00" : "#ff1744"}">${won ? "فوز" : drawn ? "تعادل" : "خسارة"}</td>
-                    <td style="font-size:12px;color:#5a6a8a">${g.uploaded_at ? g.uploaded_at.slice(0, 10) : "-"}</td>
-                </tr>`;
+                return `<tr><td>#${h.length - i}</td><td>${g.map_name || "-"}</td><td>${g.goals} / ${g.assists} / ${g.saves}</td><td>${g.shooting_pct}%</td><td>${g.boost_avg}</td><td>${g.score}</td><td style="color:${won ? "#00c853" : drawn ? "#ffab00" : "#ff1744"}">${won ? "فوز" : drawn ? "تعادل" : "خسارة"}</td><td style="font-size:12px;color:#5a6a8a">${g.uploaded_at ? g.uploaded_at.slice(0, 10) : "-"}</td></tr>`;
             }).join("");
-            content.innerHTML = `
-                <p style="margin-bottom:10px;color:#8892b0">آخر ${h.length} مباريات — ${playerName}</p>
-                <div class="table-wrap">
-                    <table class="history-table">
-                        <thead><tr>
-                            <th>#</th><th>الخريطة</th><th>أهداف/تمرير/تصدي</th><th>دقة</th><th>boost</th><th>سكور</th><th>نتيجة</th><th>التاريخ</th>
-                        </tr></thead>
-                        <tbody>${rows}</tbody>
-                    </table>
-                </div>`;
+            content.innerHTML = `<p style="margin-bottom:10px;color:#8892b0">آخر ${h.length} مباريات — ${playerName}</p><div class="table-wrap"><table class="history-table"><thead><tr><th>#</th><th>الخريطة</th><th>أهداف/تمرير/تصدي</th><th>دقة</th><th>boost</th><th>سكور</th><th>نتيجة</th><th>التاريخ</th></tr></thead><tbody>${rows}</tbody></table></div>`;
         })
         .catch(() => section.classList.add("hidden"));
 }
@@ -417,6 +384,91 @@ function resetApp() {
     dropZone.classList.remove("hidden");
     uploadStatus.classList.add("hidden");
     document.getElementById("file-input").value = "";
+}
+
+// ═══════════════════════════════════════════════
+// PLAYER SEARCH
+// ═══════════════════════════════════════════════
+let searchTimeout = null;
+
+function handleSearch() {
+    clearTimeout(searchTimeout);
+    const input = document.getElementById("search-input").value.trim();
+    const results = document.getElementById("search-results");
+    if (input.length < 1) { results.classList.add("hidden"); return; }
+    searchTimeout = setTimeout(() => {
+        fetch(`/api/players/search?q=${encodeURIComponent(input)}`)
+            .then(r => r.json())
+            .then(data => {
+                const players = data.players || [];
+                if (!players.length) {
+                    results.innerHTML = '<div class="search-result-item search-result-empty">لا توجد نتائج</div>';
+                    results.classList.remove("hidden");
+                    return;
+                }
+                results.innerHTML = players.map(p =>
+                    `<div class="search-result-item" onclick="showPlayerProfile('${p.player_name}')">
+                        <span class="search-result-name">${p.player_name}</span>
+                        <span class="search-result-stats">${p.total_games} مباريات | ${p.total_goals} goals | ${Math.round(p.avg_score || 0)} avg</span>
+                    </div>`
+                ).join("");
+                results.classList.remove("hidden");
+            })
+            .catch(() => {});
+    }, 300);
+}
+
+document.addEventListener("click", function(e) {
+    const results = document.getElementById("search-results");
+    const input = document.getElementById("search-input");
+    if (!results.classList.contains("hidden") && !results.contains(e.target) && e.target !== input) {
+        results.classList.add("hidden");
+    }
+});
+
+function showPlayerProfile(playerName) {
+    document.getElementById("search-results").classList.add("hidden");
+    const modal = document.getElementById("player-profile-modal");
+    const content = document.getElementById("player-profile-content");
+    modal.classList.remove("hidden");
+    content.innerHTML = "<p style='color:#8892b0;'>جاري التحميل...</p>";
+    fetch(`/api/players/profile/${encodeURIComponent(playerName)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { content.innerHTML = `<p style='color:#ff1744;'>${data.error}</p>`; return; }
+            const s = data.stats || {};
+            const games = data.games || [];
+            let html = `
+                <div class="profile-header-card">
+                    <div class="profile-avatar">${playerName.charAt(0).toUpperCase()}</div>
+                    <div class="profile-info">
+                        <h3 style="color:#fff;font-size:20px;margin-bottom:4px;">${playerName}</h3>
+                        <p style="color:#8892b0;font-size:13px;">${s.total_games || 0} مباريات إجمالي</p>
+                    </div>
+                </div>
+                <div class="profile-stats-grid">
+                    <div class="profile-stat"><span class="profile-stat-value">${s.total_goals || 0}</span><span class="profile-stat-label">إجمالي الأهداف</span></div>
+                    <div class="profile-stat"><span class="profile-stat-value">${s.total_assists || 0}</span><span class="profile-stat-label">إجمالي التمريرات</span></div>
+                    <div class="profile-stat"><span class="profile-stat-value">${s.total_saves || 0}</span><span class="profile-stat-label">إجمالي التصديات</span></div>
+                    <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_shooting_pct || 0)}%</span><span class="profile-stat-label">متوسط دقة التسديد</span></div>
+                    <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_boost || 0)}</span><span class="profile-stat-label">متوسط البوست</span></div>
+                    <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_score || 0)}</span><span class="profile-stat-label">متوسط السكور</span></div>
+                </div>`;
+            if (games.length) {
+                html += `<h4 style="color:#fff;margin:15px 0 10px;">🕐 آخر المباريات</h4><div class="table-wrap" style="max-height:250px;overflow-y:auto;"><table class="history-table"><thead><tr><th>#</th><th>الطور</th><th>أ/ت/تص</th><th>سكور</th><th>نتيجة</th><th>التاريخ</th></tr></thead><tbody>`;
+                games.forEach((g, i) => {
+                    const won = (g.team === "blue" && g.blue_goals > g.orange_goals) || (g.team === "orange" && g.orange_goals > g.blue_goals);
+                    html += `<tr><td>#${games.length - i}</td><td>${g.game_mode || "-"}</td><td>${g.goals}/${g.assists}/${g.saves}</td><td>${g.score}</td><td style="color:${won ? "#00c853" : "#ff1744"}">${won ? "فوز" : "خسارة"}</td><td style="font-size:12px;color:#5a6a8a">${g.uploaded_at ? g.uploaded_at.slice(0,10) : "-"}</td></tr>`;
+                });
+                html += `</tbody></table></div>`;
+            }
+            content.innerHTML = html;
+        })
+        .catch(() => { content.innerHTML = "<p style='color:#ff1744;'>تعذر تحميل بيانات اللاعب</p>"; });
+}
+
+function closePlayerProfile() {
+    document.getElementById("player-profile-modal").classList.add("hidden");
 }
 
 // ═══════════════════════════════════════════════
@@ -648,199 +700,68 @@ function coachWords(text) {
     return coachNorm(text).split(/\s+/).filter(w => w.length >= 2);
 }
 
-// ─── SMART "HOW TO IMPROVE AT X" PARSER ──
 function parseImproveQuery(text) {
     const norm = coachNorm(text);
     const m = norm.match(/^(?:كيف|كيفيه|كيفية|وشلون)\s+(?:اتدرب|اتعلم|اطور|احسن)\s+(?:على|في)?\s*(.+)/);
-    if (m) {
-        const topic = m[1].trim();
-        if (topic.length >= 2) return topic;
-    }
+    if (m) { const topic = m[1].trim(); if (topic.length >= 2) return topic; }
     return null;
 }
 
-// ─── CATEGORY MATCHER ────────────────────
 function findBestCategory(input) {
     const norm = coachNorm(input);
     const words = coachWords(input);
-
     let best = { entry: null, score: 0, matches: [] };
-
     for (const entry of coachKnowledge) {
-        let score = 0;
-        const matched = [];
-
+        let score = 0; const matched = [];
         for (const topic of entry.topics) {
             const t = coachNorm(topic);
-
-            // Multi-word exact phrase match — strongest signal
-            if (t.includes(" ") && norm.includes(t)) {
-                score += t.length * 8;
-                matched.push(topic);
-                continue;
-            }
-
-            // Exact word match in tokenized input
-            if (!t.includes(" ") && words.includes(t)) {
-                score += t.length * 5;
-                matched.push(topic);
-                continue;
-            }
-
-            // Substring match — weakest signal
-            if (!t.includes(" ") && norm.includes(t)) {
-                score += t.length * 1;
-                matched.push(topic);
-                continue;
-            }
+            if (t.includes(" ") && norm.includes(t)) { score += t.length * 8; matched.push(topic); continue; }
+            if (!t.includes(" ") && words.includes(t)) { score += t.length * 5; matched.push(topic); continue; }
+            if (!t.includes(" ") && norm.includes(t)) { score += t.length * 1; matched.push(topic); continue; }
         }
-
-        // Bonus for 2+ unique keyword matches
-        if (matched.length >= 3) score += 15;
-        else if (matched.length >= 2) score += 6;
-
-        if (score > best.score) {
-            best = { entry, score, matches: matched };
-        }
+        if (matched.length >= 3) score += 15; else if (matched.length >= 2) score += 6;
+        if (score > best.score) best = { entry, score, matches: matched };
     }
-
     return best;
 }
 
-// ─── INPUT ANALYSIS ──────────────────────
 function analyzeInput(text) {
     const norm = coachNorm(text);
     const words = coachWords(text);
-    const shortWords = text.split(/\s+/).filter(w => w.length >= 1);
-
-    const frustration = words.some(w => ["زعلان", "متضايق", "خسرت", "تعبان", "طفشت", "ملل", "ضيق", "غاضب", "غضبان", "خسارة", "مستاء", "خايس", "خايص", "سيء", "سئمت", "عجزت", "ماحب"].includes(w));
-    const excitement = words.some(w => ["فزت", "حلو", "جميل", "رائع", "روعة", "ممتاز", "فخور", "انتصار", "ناس", "جامد", "نار", "ناري", "مبسوط", "فرحت", "استمتعت"].includes(w));
-    const seekingOpinion = words.some(w => ["رأيك", "تعتقد", "تظن", "تشوف", "برأيك", "وجهة نظر", "قل", "برأي"].includes(w));
-    const aboutSelf = words.some(w => ["أنا", "انا", "عمري", "عمري", "قريت", "شفت", "سمعت", "جربت", "سويت", "لعبت", "صرلي", "صار", "قاعد", "قاعد"].includes(w));
-    const disagree = words.some(w => ["غلط", "خطأ", "لا", "مو", "مش", "كذب", "غباء", "متفق", "اتفق"].includes(w));
-
-    return { frustration, excitement, seekingOpinion, aboutSelf, disagree, norm, words, shortWords };
+    return {
+        frustration: words.some(w => ["زعلان","متضايق","خسرت","تعبان","طفشت","ملل","ضيق","غاضب","غضبان","خسارة","مستاء","خايس","خايص","سيء","سئمت","عجزت","ماحب"].includes(w)),
+        excitement: words.some(w => ["فزت","حلو","جميل","رائع","روعة","ممتاز","فخور","انتصار","ناس","جامد","نار","ناري","مبسوط","فرحت","استمتعت"].includes(w)),
+        seekingOpinion: words.some(w => ["رأيك","تعتقد","تظن","تشوف","برأيك","وجهة نظر","قل","برأي"].includes(w)),
+        aboutSelf: words.some(w => ["أنا","انا","عمري","عمري","قريت","شفت","سمعت","جربت","سويت","لعبت","صرلي","صار","قاعد","قاعد"].includes(w)),
+        disagree: words.some(w => ["غلط","خطأ","لا","مو","مش","كذب","غباء","متفق","اتفق"].includes(w)),
+    };
 }
 
-// ─── CONVERSATIONAL FALLBACK ─────────────
 function conversationalFallback(input, analysis) {
     const { frustration, excitement, seekingOpinion, aboutSelf, disagree } = analysis;
-
-    // ── Frustrated / tilted ──
-    if (frustration) {
-        return [
-            "أحسك متضايق شوي. صدقني كلنا نمر بهالمرحلة. الـ tilt يخليك تسوي قرارات غلط بدون ما تدري. خذ استراحة ١٠ دقايق، امشي، ارجع هادئ — بتلعب أفضل.",
-            "أتفهم شعورك. روكيت ليق لعبة صعبة لأن الأخطاء تبان قوي. بس تذكر: كل خسارة درس. شوف الريبلاي، وش اللي ضيع المباراة؟ ركز على شيء واحد واطوره.",
-            "الخسارة مو نهاية العالم. أنا خسرت مباريات كثيرة في الـ RLCS وتعلمت منها أكثر من اللي فزت فيها. اللي يميز المحترف إنه يتعلم من الخسارة مو إنه يتأثر."
-        ][Math.floor(Math.random() * 3)];
-    }
-
-    // ── Excited / hyped ──
-    if (excitement) {
-        return [
-            "ايوا! كذا اللعب! الفرحة هذي هي سبب حبنا للعبة. بس تذكر: لا توقف على هالانتصار — استمر، حافظ على هالطاقة واستخدمها عشان تطور أكثر.",
-            "ممتاز! الفوز جميل لكن لا يخليك تغتر. حافظ على تواضعك و استمر تتعلم. الفرق بين لاعب كويس ولاعب محترف هو الاستمرارية.",
-            "هذا الكلام يسعدني! تأكد إنك تحتفل بانتصاراتك — حتى الصغيرة. كل هدف يتعلم منه، كل مباراة تطورك."
-        ][Math.floor(Math.random() * 3)];
-    }
-
-    // ── Talking about self / story ──
-    if (aboutSelf) {
-        return [
-            "صراحة، كل لاعب عنده قصته. اللي مهم إنك تحافظ على شغفك. روكيت ليق لعبة تتعلمها يوم بعد يوم. أهم شيء: لا تقارن نفسك بالثانيين — ركز على تطورك أنت.",
-            "من كلامك أحسك لاعب شغوف. هذا أجمل شي. تذكر إن المهارات تاخذ وقت — حتى Zen ما صار Zen بين ليلة وضحاها. العب بذكاء مو بسرعة.",
-            "كل لاعب عنده نقاط قوة ونقاط ضعف. انت وش تشوف أقوى شيء فيك؟ ركز عليه وطوره — الباقي بيج مع الوقت."
-        ][Math.floor(Math.random() * 3)];
-    }
-
-    // ── Seeking opinion ──
-    if (seekingOpinion) {
-        return [
-            "من وجهة نظري كلاعب RLCS سابق، الرأي الحقيقي يبان في أرض الملعب. أقدر أقولك إن المهارات الفردية مهمة بس التوافق مع الفريق هو اللي يربح البطولات. وش رأيك أنت؟",
-            "أنا أؤمن بشيء واحد: اللعبة ما توقف على حركة وحدة. فيه مليون طريقة تلعب. اللي يناسب غيرك مو دايم يناسبك. جرب، أخطأ، تعلم — هذي طريق التطور.",
-            "بكل صراحة: روكيت ليق مو لعبة ميكانيك بس — ٦٠٪ قرارات و٤٠٪ تنفيذ. إذا تعلمت تقرأ اللعبة صح، نص المشوار قطعته."
-        ][Math.floor(Math.random() * 3)];
-    }
-
-    // ── Disagreeing ──
-    if (disagree) {
-        return [
-            "ممكن عندك وجهة نظر مختلفة، وهذا شي جميل. النقاش يولد أفكار جديدة. أنا أتكلم من خبرتي، بس كل واحد له أسلوبه. جرب تشوف وش يناسبك، وإذا لقيت شي أفضل — علمني.",
-            "الصراحة أحترم إنك ما تتفق. اللعبة فيها أكثر من طريقة. أنا أعطيك نصائح من تجربتي، لكن في النهاية اللي يقرر هو أسلوبك. جرب وقرر بنفسك."
-        ][Math.floor(Math.random() * 2)];
-    }
-
-    // ── General chat / anything else ──
-    const general = [
-        "والله كلامك ذكرني بأيام الـ RLCS. أفتقد أجواء البطولات — الضغط، الجمهور، التنافس. روكيت ليق مو مجرد لعبة، أسلوب حياة. وش أكثر شيء تحبه فيها؟",
-        "أحياناً أفضل شي تسويه هو توقف و تفكر: ليش أنا لاعب هاللعبة؟ إذا كان الجواب لأني أستمتع — فأنت في الطريق الصحيح. الاستمتاع يخليك تتطور بدون ما تحس.",
-        "صدقني، أكثر لحظاتي إلهامًا في روكيت ليق كانت وأنا في free play. مش ضروري دايماً تكون في مباراة — خذ وقتك مع الكورة، جرب حركات جديدة، اطلع من منطقة الراحة.",
-        "فيه مقولة belovedة في المجتمع: 'حط الكورة في المرمى'. مبسّطة، بس فيها كل شي. لا تعقد الأمور — ركز على الأساسيات و الباقي بيجي.",
-        "أعظم لاعبين روكيت ليق ما أوصلوا بالميكانيك فقط — وصلوا لأنهم يفكرون أسرع من خصومهم. الخطوة الجاية: ارفع سرعة تفكيرك. شوف الكورة، اقرأ اللعبة، تحرك.",
-        "أقوى نصيحة أقدر أعطيها لأي لاعب: لا تخاف تخطئ. كل خطأ تتعلم منه يرفع مستواك. المشكلة الوحيدة هي إنك تكرر نفس الخطأ بدون ما تاخذ العبرة.",
-        "عندي قناعة: كل مباراة خسرتها في الـ RLCS علمتني أكثر من أي مباراة فزت فيها. الخسارة تظهر نقاط ضعفك، والفوز يخبيها. حلل خسائرك — بتتطور بسرعة.",
-        "مافي شي اسمه 'موهبة فطرية' في روكيت ليق. كل المحترفين تدربوا آلاف الساعات. الفرق بينك وبينهم: ساعات التدريب الواعي. العب بهدف، ليس عشان تخلص المباراة.",
-        "خلني أقولك سر: السرعة مو دايماً الحل. أبطأ شوي، فكر، و نفذ بدقة. لاعب بطيء وذكي يغلب لاعب سريع وغبي ٩ مرات من ١٠.",
-        "تخيل إن كل مباراة رانكد هي تمرين. ما فيها شي تخسره إلا نقاط — و النقاط ترجع. لكن الخبرة و المهارة اللي تاخذها من المباراة تبقى معك للأبد.",
-        "الـ Rocket League زي الشطرنج بالسرعة. لازم تفكر بخطوتين قدام. وين بتروح الكورة؟ وين راح يكون الخصم؟ وين زميلك؟ هذي الأسئلة هي اللي تفرق."
-    ];
-    return general[Math.floor(Math.random() * general.length)];
+    if (frustration) return ["أحسك متضايق شوي. صدقني كلنا نمر بهالمرحلة. الـ tilt يخليك تسوي قرارات غلط بدون ما تدري. خذ استراحة ١٠ دقايق، امشي، ارجع هادئ — بتلعب أفضل.","أتفهم شعورك. روكيت ليق لعبة صعبة لأن الأخطاء تبان قوي. بس تذكر: كل خسارة درس. شوف الريبلاي، وش اللي ضيع المباراة؟ ركز على شيء واحد واطوره.","الخسارة مو نهاية العالم. أنا خسرت مباريات كثيرة في الـ RLCS وتعلمت منها أكثر من اللي فزت فيها. اللي يميز المحترف إنه يتعلم من الخسارة مو إنه يتأثر."][Math.floor(Math.random()*3)];
+    if (excitement) return ["ايوا! كذا اللعب! الفرحة هذي هي سبب حبنا للعبة. بس تذكر: لا توقف على هالانتصار — استمر، حافظ على هالطاقة واستخدمها عشان تطور أكثر.","ممتاز! الفوز جميل لكن لا يخليك تغتر. حافظ على تواضعك و استمر تتعلم. الفرق بين لاعب كويس ولاعب محترف هو الاستمرارية.","هذا الكلام يسعدني! تأكد إنك تحتفل بانتصاراتك — حتى الصغيرة. كل هدف يتعلم منه، كل مباراة تطورك."][Math.floor(Math.random()*3)];
+    if (aboutSelf) return ["صراحة، كل لاعب عنده قصته. اللي مهم إنك تحافظ على شغفك. روكيت ليق لعبة تتعلمها يوم بعد يوم. أهم شيء: لا تقارن نفسك بالثانيين — ركز على تطورك أنت.","من كلامك أحسك لاعب شغوف. هذا أجمل شي. تذكر إن المهارات تاخذ وقت — حتى Zen ما صار Zen بين ليلة وضحاها. العب بذكاء مو بسرعة.","كل لاعب عنده نقاط قوة ونقاط ضعف. انت وش تشوف أقوى شيء فيك؟ ركز عليه وطوره — الباقي بيج مع الوقت."][Math.floor(Math.random()*3)];
+    if (seekingOpinion) return ["من وجهة نظري كلاعب RLCS سابق، الرأي الحقيقي يبان في أرض الملعب. أقدر أقولك إن المهارات الفردية مهمة بس التوافق مع الفريق هو اللي يربح البطولات. وش رأيك أنت؟","أنا أؤمن بشيء واحد: اللعبة ما توقف على حركة وحدة. فيه مليون طريقة تلعب. اللي يناسب غيرك مو دايم يناسبك. جرب، أخطأ، تعلم — هذي طريق التطور.","بكل صراحة: روكيت ليق مو لعبة ميكانيك بس — ٦٠٪ قرارات و٤٠٪ تنفيذ. إذا تعلمت تقرأ اللعبة صح، نص المشوار قطعته."][Math.floor(Math.random()*3)];
+    if (disagree) return ["ممكن عندك وجهة نظر مختلفة، وهذا شي جميل. النقاش يولد أفكار جديدة. أنا أتكلم من خبرتي، بس كل واحد له أسلوبه. جرب تشوف وش يناسبك، وإذا لقيت شي أفضل — علمني.","الصراحة أحترم إنك ما تتفق. اللعبة فيها أكثر من طريقة. أنا أعطيك نصائح من تجربتي، لكن في النهاية اللي يقرر هو أسلوبك. جرب وقرر بنفسك."][Math.floor(Math.random()*2)];
+    return ["والله كلامك ذكرني بأيام الـ RLCS. أفتقد أجواء البطولات — الضغط، الجمهور، التنافس. روكيت ليق مو مجرد لعبة، أسلوب حياة. وش أكثر شيء تحبه فيها؟","أحياناً أفضل شي تسويه هو توقف و تفكر: ليش أنا لاعب هاللعبة؟ إذا كان الجواب لأني أستمتع — فأنت في الطريق الصحيح. الاستمتاع يخليك تتطور بدون ما تحس.","صدقني، أكثر لحظاتي إلهامًا في روكيت ليق كانت وأنا في free play. مش ضروري دايماً تكون في مباراة — خذ وقتك مع الكورة، جرب حركات جديدة، اطلع من منطقة الراحة.","فيه مقولة belovedة في المجتمع: 'حط الكورة في المرمى'. مبسّطة، بس فيها كل شي. لا تعقد الأمور — ركز على الأساسيات و الباقي بيجي.","أعظم لاعبين روكيت ليق ما أوصلوا بالميكانيك فقط — وصلوا لأنهم يفكرون أسرع من خصومهم. الخطوة الجاية: ارفع سرعة تفكيرك. شوف الكورة، اقرأ اللعبة، تحرك.","أقوى نصيحة أقدر أعطيها لأي لاعب: لا تخاف تخطئ. كل خطأ تتعلم منه يرفع مستواك. المشكلة الوحيدة هي إنك تكرر نفس الخطأ بدون ما تاخذ العبرة.","عندي قناعة: كل مباراة خسرتها في الـ RLCS علمتني أكثر من أي مباراة فزت فيها. الخسارة تظهر نقاط ضعفك، والفوز يخبيها. حلل خسائرك — بتتطور بسرعة.","مافي شي اسمه 'موهبة فطرية' في روكيت ليق. كل المحترفين تدربوا آلاف الساعات. الفرق بينك وبينهم: ساعات التدريب الواعي. العب بهدف، ليس عشان تخلص المباراة.","خلني أقولك سر: السرعة مو دايماً الحل. أبطأ شوي، فكر، و نفذ بدقة. لاعب بطيء وذكي يغلب لاعب سريع وغبي ٩ مرات من ١٠.","تخيل إن كل مباراة رانكد هي تمرين. ما فيها شي تخسره إلا نقاط — و النقاط ترجع. لكن الخبرة و المهارة اللي تاخذها من المباراة تبقى معك للأبد.","الـ Rocket League زي الشطرنج بالسرعة. لازم تفكر بخطوتين قدام. وين بتروح الكورة؟ وين راح يكون الخصم؟ وين زميلك؟ هذي الأسئلة هي اللي تفرق."][Math.floor(Math.random()*11)];
 }
 
-// ─── MAIN COACH RESPONSE ─────────────────
 function getCoachResponse(input) {
     const text = input.trim();
     if (!text) return "";
     const analysis = analyzeInput(text);
-
-    // ── Step 1: Check for "how to improve at X" and route to specific topic ──
     const improveTopic = parseImproveQuery(text);
-    if (improveTopic) {
-        const topicResult = findBestCategory(improveTopic);
-        if (topicResult.entry && topicResult.score > 0) {
-            const responses = topicResult.entry.responses;
-            const idx = Math.floor(Math.random() * responses.length);
-            return responses[idx];
-        }
-    }
-
-    // ── Step 2: KB category matching — any match, even weak ──
-    const result = findBestCategory(text);
-    if (result.entry && result.score > 0) {
-        const responses = result.entry.responses;
-        const idx = Math.floor(Math.random() * responses.length);
-        return responses[idx];
-    }
-
-    // ── Step 3: Pure greetings ──
-    const greetWords = ["هلا", "هلو", "مرحبا", "هاي", "hi", "hello", "hey", "سلام", "اهلين", "السلام عليكم", "مساء", "صباح"];
-    const n = coachNorm(text);
-    const w = coachWords(text);
-    if (w.length <= 3 && greetWords.some(g => coachNorm(g) === n || n.startsWith(coachNorm(g)))) {
-        return "وعليكم السلام! أنا جاهز لأي سؤال — روتنيشن، ميكانيك، بوست، تدريب، أو تحليل. وش عندك؟";
-    }
-
-    // ── Step 4: Thanks / farewell ──
-    const thanksWords = ["شكرا", "يسلمو", "تسلم", "thx", "thanks", "thank", "يعطيك", "ما قصرت"];
-    if (w.length <= 3 && thanksWords.some(t => coachNorm(t) === n || n.startsWith(coachNorm(t)))) {
-        return [
-            "العفو! إذا احتجت شي ثاني أنا موجود. شد حيلك و بتوصل GC قريباً",
-            "الله يسلمك! تذكّر: التطور يحتاج صبر. كل مباراة درس جديد",
-            "على الرحب والسعة! لا تنسى تسوي تحليل ريبلاي لنفسك كل اسبوع"
-        ][Math.floor(Math.random() * 3)];
-    }
-
-    // ── Step 5: Short affirmative follow-up ──
-    const affirmWords = ["نعم", "اي", "ايه", "yes", "yeah", "يب", "ok", "اوكي", "تم", "طيب"];
-    if (w.length <= 2 && affirmWords.some(a => coachNorm(a) === n || n.startsWith(coachNorm(a)))) {
-        return [
-            "تمام! جرب الكلام اللي قلته لك و ارجع لي بخبر",
-            "كويس! عندك سؤال ثاني؟",
-            "حلو. خلني أضيف: أهم شي الاستمرارية. كل يوم شوي — مو مرة في الأسبوع كثير"
-        ][Math.floor(Math.random() * 3)];
-    }
-
-    // ── Step 6: Conversational fallback ──
+    if (improveTopic) { const r = findBestCategory(improveTopic); if (r.entry && r.score > 0) return r.entry.responses[Math.floor(Math.random()*r.entry.responses.length)]; }
+    const r = findBestCategory(text);
+    if (r.entry && r.score > 0) return r.entry.responses[Math.floor(Math.random()*r.entry.responses.length)];
+    const greetWords = ["هلا","هلو","مرحبا","هاي","hi","hello","hey","سلام","اهلين","السلام عليكم","مساء","صباح"];
+    const n = coachNorm(text); const w = coachWords(text);
+    if (w.length <= 3 && greetWords.some(g => coachNorm(g) === n || n.startsWith(coachNorm(g)))) return "وعليكم السلام! أنا جاهز لأي سؤال — روتنيشن، ميكانيك، بوست، تدريب، أو تحليل. وش عندك؟";
+    const thanksWords = ["شكرا","يسلمو","تسلم","thx","thanks","thank","يعطيك","ما قصرت"];
+    if (w.length <= 3 && thanksWords.some(t => coachNorm(t) === n || n.startsWith(coachNorm(t)))) return ["العفو! إذا احتجت شي ثاني أنا موجود. شد حيلك و بتوصل GC قريباً","الله يسلمك! تذكّر: التطور يحتاج صبر. كل مباراة درس جديد","على الرحب والسعة! لا تنسى تسوي تحليل ريبلاي لنفسك كل اسبوع"][Math.floor(Math.random()*3)];
+    const affirmWords = ["نعم","اي","ايه","yes","yeah","يب","ok","اوكي","تم","طيب"];
+    if (w.length <= 2 && affirmWords.some(a => coachNorm(a) === n || n.startsWith(coachNorm(a)))) return ["تمام! جرب الكلام اللي قلته لك و ارجع لي بخبر","كويس! عندك سؤال ثاني؟","حلو. خلني أضيف: أهم شي الاستمرارية. كل يوم شوي — مو مرة في الأسبوع كثير"][Math.floor(Math.random()*3)];
     return conversationalFallback(text, analysis);
 }
 
@@ -853,99 +774,51 @@ const coachInput = document.getElementById("coach-input");
 const coachSend = document.getElementById("coach-send");
 
 let coachOpen = false;
-
-coachToggle.addEventListener("click", () => {
-    coachOpen = !coachOpen;
-    coachPanel.classList.toggle("hidden", !coachOpen);
-    if (coachOpen) coachInput.focus();
-});
-
-coachClose.addEventListener("click", () => {
-    coachOpen = false;
-    coachPanel.classList.add("hidden");
-});
+coachToggle.addEventListener("click", () => { coachOpen = !coachOpen; coachPanel.classList.toggle("hidden", !coachOpen); if (coachOpen) coachInput.focus(); });
+coachClose.addEventListener("click", () => { coachOpen = false; coachPanel.classList.add("hidden"); });
 
 function addCoachMsg(text, type) {
-    const div = document.createElement("div");
-    div.className = "coach-msg coach-msg-" + type;
+    const div = document.createElement("div"); div.className = "coach-msg coach-msg-" + type;
     div.innerHTML = '<div class="coach-msg-avatar">' + (type === "bot" ? "🏆" : "👤") + '</div><div class="coach-msg-content">' + text.replace(/\n/g, "<br>") + "</div>";
-    coachMessages.appendChild(div);
-    coachMessages.scrollTop = coachMessages.scrollHeight;
+    coachMessages.appendChild(div); coachMessages.scrollTop = coachMessages.scrollHeight;
 }
-
 function showCoachTyping() {
-    const div = document.createElement("div");
-    div.className = "coach-msg coach-msg-bot";
-    div.id = "coach-typing";
+    const div = document.createElement("div"); div.className = "coach-msg coach-msg-bot"; div.id = "coach-typing";
     div.innerHTML = '<div class="coach-msg-avatar">🏆</div><div class="coach-msg-content coach-typing"><span></span><span></span><span></span></div>';
-    coachMessages.appendChild(div);
-    coachMessages.scrollTop = coachMessages.scrollHeight;
+    coachMessages.appendChild(div); coachMessages.scrollTop = coachMessages.scrollHeight;
 }
-
-function removeCoachTyping() {
-    const el = document.getElementById("coach-typing");
-    if (el) el.remove();
-}
-
+function removeCoachTyping() { const el = document.getElementById("coach-typing"); if (el) el.remove(); }
 function handleCoachSend() {
-    const text = coachInput.value.trim();
-    if (!text) return;
-    addCoachMsg(text, "user");
-    coachInput.value = "";
-
-    showCoachTyping();
-    const delay = 300 + Math.random() * 1000;
-    setTimeout(() => {
-        removeCoachTyping();
-        addCoachMsg(getCoachResponse(text), "bot");
-    }, delay);
+    const text = coachInput.value.trim(); if (!text) return;
+    addCoachMsg(text, "user"); coachInput.value = "";
+    showCoachTyping(); const delay = 300 + Math.random() * 1000;
+    setTimeout(() => { removeCoachTyping(); addCoachMsg(getCoachResponse(text), "bot"); }, delay);
 }
-
 coachSend.addEventListener("click", handleCoachSend);
-coachInput.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") handleCoachSend();
-});
+coachInput.addEventListener("keydown", function(e) { if (e.key === "Enter") handleCoachSend(); });
 
 // ═══ STEAM LOGIN ═════════════════════════
 function steamLogin() {
-    fetch("/api/auth/steam")
-        .then(r => r.json())
-        .then(data => {
-            if (data.url) {
-                const w = window.open(data.url, "steam-login", "width=600,height=700");
-                const timer = setInterval(() => {
-                    if (w.closed) {
-                        clearInterval(timer);
-                        checkAuth();
-                    }
-                }, 500);
-            }
-        })
-        .catch(() => alert("تعذر الاتصال بالخادم"));
+    fetch("/api/auth/steam").then(r => r.json()).then(data => {
+        if (data.url) {
+            const w = window.open(data.url, "steam-login", "width=600,height=700");
+            const timer = setInterval(() => { if (w.closed) { clearInterval(timer); checkAuth(); } }, 500);
+        }
+    }).catch(() => alert("تعذر الاتصال بالخادم"));
 }
 
 // ═══ EPIC GAMES LOGIN ═══════════════════
 function epicLogin() {
-    fetch("/api/auth/epic")
-        .then(r => r.json())
-        .then(data => {
-            if (data.url) {
-                const w = window.open(data.url, "epic-login", "width=600,height=700");
-                const timer = setInterval(() => {
-                    if (w.closed) {
-                        clearInterval(timer);
-                        checkAuth();
-                    }
-                }, 500);
-            }
-        })
-        .catch(() => alert("تعذر الاتصال بالخادم"));
+    fetch("/api/auth/epic").then(r => r.json()).then(data => {
+        if (data.url) {
+            const w = window.open(data.url, "epic-login", "width=500,height=500");
+            const timer = setInterval(() => { if (w.closed) { clearInterval(timer); checkAuth(); } }, 500);
+        }
+    }).catch(() => alert("تعذر الاتصال بالخادم"));
 }
 
 window.addEventListener("message", function(e) {
-    if (e.data === "steam-login-success" || e.data === "epic-login-success") {
-        checkAuth();
-    }
+    if (e.data === "steam-login-success" || e.data === "epic-login-success") checkAuth();
 });
 
 // ═══ USER PROFILE ════════════════════════
@@ -954,127 +827,44 @@ function showProfile() {
     const content = document.getElementById("profile-content");
     modal.classList.remove("hidden");
     content.innerHTML = "<p style='color:#8892b0;'>جاري تحميل الملف الشخصي...</p>";
-
-    fetch("/api/user/profile")
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) {
-                content.innerHTML = `<p style='color:#ff1744;'>${data.error}</p>`;
-                return;
-            }
-            const u = data.user || {};
-            const s = data.stats || {};
-            const recent = data.recent || [];
-            const totalReplays = s.total_replays || 0;
-
-            let html = `
-                <div class="profile-header-card">
-                    <div class="profile-avatar">${u.display_name ? u.display_name.charAt(0).toUpperCase() : "?"}</div>
-                    <div class="profile-info">
-                        <h3 style="color:#fff;font-size:20px;margin-bottom:4px;">${u.display_name || u.username || "مستخدم"}</h3>
-                        <p style="color:#8892b0;font-size:13px;">${u.username || ""}</p>
-                    </div>
-                </div>
-            `;
-
-            if (totalReplays > 0) {
-                html += `
-                <div class="profile-stats-grid">
-                    <div class="profile-stat">
-                        <span class="profile-stat-value">${totalReplays}</span>
-                        <span class="profile-stat-label">إجمالي الريبلايات</span>
-                    </div>
-                    <div class="profile-stat">
-                        <span class="profile-stat-value">${s.total_goals || 0}</span>
-                        <span class="profile-stat-label">إجمالي الأهداف</span>
-                    </div>
-                    <div class="profile-stat">
-                        <span class="profile-stat-value">${s.total_assists || 0}</span>
-                        <span class="profile-stat-label">إجمالي التمريرات</span>
-                    </div>
-                    <div class="profile-stat">
-                        <span class="profile-stat-value">${s.total_saves || 0}</span>
-                        <span class="profile-stat-label">إجمالي التصديات</span>
-                    </div>
-                    <div class="profile-stat">
-                        <span class="profile-stat-value">${Math.round(s.avg_shooting_pct || 0)}%</span>
-                        <span class="profile-stat-label">معدل دقة التسديد</span>
-                    </div>
-                    <div class="profile-stat">
-                        <span class="profile-stat-value">${Math.round(s.avg_boost || 0)}</span>
-                        <span class="profile-stat-label">معدل البوست</span>
-                    </div>
-                </div>`;
-            } else {
-                html += `<p style="color:#8892b0;margin:20px 0;text-align:center;">ما عندك ريبلايات مسجلة لحسابك. ارفع ريبلاي واختر اسمك عشان تبدأ.</p>`;
-            }
-
-            // Recent replays
-            if (recent.length > 0) {
-                html += `<h4 style="color:#fff;margin:20px 0 10px;">🕐 آخر الريبلايات</h4><div class="table-wrap" style="max-height:250px;overflow-y:auto;">`;
-                html += `<table class="history-table"><thead><tr><th>#</th><th>اللاعب</th><th>الطور</th><th>أ/ت/تص</th><th>سكور</th><th>التاريخ</th></tr></thead><tbody>`;
-                recent.forEach((g, i) => {
-                    html += `<tr>
-                        <td>#${recent.length - i}</td>
-                        <td>${g.player_name || "-"}</td>
-                        <td>${g.game_mode || "-"}</td>
-                        <td>${g.goals || 0}/${g.assists || 0}/${g.saves || 0}</td>
-                        <td>${g.score || 0}</td>
-                        <td style="font-size:12px;color:#5a6a8a">${g.uploaded_at ? g.uploaded_at.slice(0, 10) : "-"}</td>
-                    </tr>`;
-                });
-                html += `</tbody></table></div>`;
-            }
-
-            // Settings section
-            const settings = data.settings || {};
-            html += `
-                <hr style="border-color:rgba(255,255,255,0.05);margin:20px 0;">
-                <div class="profile-settings-section">
-                    <h4 style="color:#fff;margin-bottom:15px;">
-                        <svg viewBox="0 0 24 24" width="18" height="18" style="vertical-align:middle;margin-left:6px;"><path fill="currentColor" d="M19.14 12.94c.04-.32.07-.64.07-.94s-.03-.62-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.49.49 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.32-.07.64-.07.94s.03.62.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58z"/></svg>
-                        ربط اسمك في الريبلاي
-                    </h4>
-                    <p style="color:#8892b0;font-size:13px;margin-bottom:10px;">اكتب اسمك عشان الريبلايات الجديدة ترتبط بحسابك تلقائياً:</p>
-                    <div style="display:flex;gap:10px;">
-                        <input type="text" id="player-name-setting" placeholder="اسمك في روكيت ليق" style="flex:1;padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;direction:rtl;">
-                        <button class="btn" onclick="savePlayerName()">حفظ</button>
-                    </div>
-                </div>`;
-
-            content.innerHTML = html;
-
-            // Load current display_name
-            if (u.display_name) {
-                document.getElementById("player-name-setting").value = u.display_name;
-            }
-        })
-        .catch(() => {
-            content.innerHTML = "<p style='color:#ff1744;'>تعذر تحميل الملف الشخصي</p>";
-        });
+    fetch("/api/user/profile").then(r => r.json()).then(data => {
+        if (data.error) { content.innerHTML = `<p style='color:#ff1744;'>${data.error}</p>`; return; }
+        const u = data.user || {}; const s = data.stats || {}; const recent = data.recent || [];
+        const totalReplays = s.total_replays || 0;
+        const taggedName = u.tagged_name || u.display_name || u.username || "مستخدم";
+        let html = `<div class="profile-header-card"><div class="profile-avatar">${taggedName.charAt(0).toUpperCase()}</div><div class="profile-info"><h3 style="color:#fff;font-size:20px;margin-bottom:4px;">${taggedName}</h3><p style="color:#8892b0;font-size:13px;">${u.username || ""}</p></div></div>`;
+        if (totalReplays > 0) {
+            html += `<div class="profile-stats-grid">
+                <div class="profile-stat"><span class="profile-stat-value">${totalReplays}</span><span class="profile-stat-label">إجمالي الريبلايات</span></div>
+                <div class="profile-stat"><span class="profile-stat-value">${s.total_goals || 0}</span><span class="profile-stat-label">إجمالي الأهداف</span></div>
+                <div class="profile-stat"><span class="profile-stat-value">${s.total_assists || 0}</span><span class="profile-stat-label">إجمالي التمريرات</span></div>
+                <div class="profile-stat"><span class="profile-stat-value">${s.total_saves || 0}</span><span class="profile-stat-label">إجمالي التصديات</span></div>
+                <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_shooting_pct || 0)}%</span><span class="profile-stat-label">معدل دقة التسديد</span></div>
+                <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_boost || 0)}</span><span class="profile-stat-label">معدل البوست</span></div>
+            </div>`;
+        } else {
+            html += `<p style="color:#8892b0;margin:20px 0;text-align:center;">ما عندك ريبلايات مسجلة لحسابك. ارفع ريبلاي واختر اسمك عشان تبدأ.</p>`;
+        }
+        if (recent.length > 0) {
+            html += `<h4 style="color:#fff;margin:20px 0 10px;">🕐 آخر الريبلايات</h4><div class="table-wrap" style="max-height:250px;overflow-y:auto;"><table class="history-table"><thead><tr><th>#</th><th>اللاعب</th><th>الطور</th><th>أ/ت/تص</th><th>سكور</th><th>التاريخ</th></tr></thead><tbody>`;
+            recent.forEach((g, i) => {
+                html += `<tr><td>#${recent.length - i}</td><td>${g.player_name || "-"}</td><td>${g.game_mode || "-"}</td><td>${g.goals || 0}/${g.assists || 0}/${g.saves || 0}</td><td>${g.score || 0}</td><td style="font-size:12px;color:#5a6a8a">${g.uploaded_at ? g.uploaded_at.slice(0,10) : "-"}</td></tr>`;
+            });
+            html += `</tbody></table></div>`;
+        }
+        html += `<hr style="border-color:rgba(255,255,255,0.05);margin:20px 0;"><div class="profile-settings-section"><h4 style="color:#fff;margin-bottom:15px;">ربط اسمك في الريبلاي</h4><p style="color:#8892b0;font-size:13px;margin-bottom:10px;">اكتب اسمك عشان الريبلايات الجديدة ترتبط بحسابك تلقائياً:</p><div style="display:flex;gap:10px;"><input type="text" id="player-name-setting" placeholder="اسمك في روكيت ليق" style="flex:1;padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;direction:rtl;"><button class="btn" onclick="savePlayerName()">حفظ</button></div></div>`;
+        content.innerHTML = html;
+        if (u.display_name) document.getElementById("player-name-setting").value = u.display_name;
+    }).catch(() => { content.innerHTML = "<p style='color:#ff1744;'>تعذر تحميل الملف الشخصي</p>"; });
 }
 
-function closeProfile() {
-    document.getElementById("profile-modal").classList.add("hidden");
-}
+function closeProfile() { document.getElementById("profile-modal").classList.add("hidden"); }
 
 function savePlayerName() {
     const name = document.getElementById("player-name-setting").value.trim();
     if (!name) { alert("اكتب اسمك أول"); return; }
-    fetch("/api/user/update-profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ display_name: name })
-    })
-    .then(r => r.json())
-    .then(d => {
-        if (d.success) {
-            alert("✅ تم الحفظ");
-            checkAuth();
-        }
-        else alert(d.error || "خطأ");
-    })
-    .catch(() => alert("فشل الحفظ"));
+    fetch("/api/user/update-profile", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({display_name: name}) })
+    .then(r=>r.json()).then(d=>{ if(d.success){alert("✅ تم الحفظ");checkAuth();} else alert(d.error||"خطأ"); }).catch(()=>alert("فشل الحفظ"));
 }
 
 // ═══ USER SETTINGS ══════════════════════
@@ -1083,51 +873,17 @@ function showSettings() {
     const content = document.getElementById("settings-content");
     modal.classList.remove("hidden");
     content.innerHTML = "<p style='color:#8892b0;'>جاري التحميل...</p>";
-
-    fetch("/api/user/settings")
-        .then(r => r.json())
-        .then(data => {
-            const s = data.settings || {};
-            content.innerHTML = `
-                <div class="settings-group">
-                    <label class="settings-label">نمط اللعب المفضل</label>
-                    <select id="settings-preferred-mode" class="settings-select">
-                        <option value="1v1" ${s.preferred_mode === "1v1" ? "selected" : ""}>1v1</option>
-                        <option value="2v2" ${s.preferred_mode === "2v2" ? "selected" : ""}>2v2</option>
-                        <option value="3v3" ${s.preferred_mode === "3v3" ? "selected" : ""}>3v3</option>
-                        <option value="scrim" ${s.preferred_mode === "scrim" ? "selected" : ""}>Scrim</option>
-                    </select>
-                </div>
-                <div class="settings-group">
-                    <label class="settings-label">البيو (عن نفسك)</label>
-                    <textarea id="settings-bio" class="settings-textarea" placeholder="اكتب شي عن نفسك..." rows="3">${data.bio || ""}</textarea>
-                </div>
-                <div class="settings-group">
-                    <label class="settings-toggle">
-                        <input type="checkbox" id="settings-auto-link" ${s.auto_link_player ? "checked" : ""}>
-                        <span class="toggle-slider"></span>
-                        <span>ربط اسم اللاعب تلقائياً بعد الرفع</span>
-                    </label>
-                </div>
-                <div class="settings-group">
-                    <label class="settings-toggle">
-                        <input type="checkbox" id="settings-team-analysis" ${s.show_team_analysis !== 0 ? "checked" : ""}>
-                        <span class="toggle-slider"></span>
-                        <span>عرض تحليل الفريق</span>
-                    </label>
-                </div>
-                <button class="btn" style="width:100%;margin-top:20px;" onclick="saveSettings()">💾 حفظ الإعدادات</button>
-            `;
-        })
-        .catch(() => {
-            content.innerHTML = "<p style='color:#ff1744;'>تعذر تحميل الإعدادات</p>";
-        });
+    fetch("/api/user/settings").then(r=>r.json()).then(data=>{
+        const s = data.settings || {};
+        content.innerHTML = `
+            <div class="settings-group"><label class="settings-label">نمط اللعب المفضل</label><select id="settings-preferred-mode" class="settings-select"><option value="1v1" ${s.preferred_mode==="1v1"?"selected":""}>1v1</option><option value="2v2" ${s.preferred_mode==="2v2"?"selected":""}>2v2</option><option value="3v3" ${s.preferred_mode==="3v3"?"selected":""}>3v3</option><option value="scrim" ${s.preferred_mode==="scrim"?"selected":""}>Scrim</option></select></div>
+            <div class="settings-group"><label class="settings-label">البيو (عن نفسك)</label><textarea id="settings-bio" class="settings-textarea" placeholder="اكتب شي عن نفسك..." rows="3">${data.bio||""}</textarea></div>
+            <div class="settings-group"><label class="settings-toggle"><input type="checkbox" id="settings-auto-link" ${s.auto_link_player?"checked":""}><span class="toggle-slider"></span><span>ربط اسم اللاعب تلقائياً بعد الرفع</span></label></div>
+            <div class="settings-group"><label class="settings-toggle"><input type="checkbox" id="settings-team-analysis" ${s.show_team_analysis!==0?"checked":""}><span class="toggle-slider"></span><span>عرض تحليل الفريق</span></label></div>
+            <button class="btn" style="width:100%;margin-top:20px;" onclick="saveSettings()">💾 حفظ الإعدادات</button>`;
+    }).catch(()=>{ content.innerHTML = "<p style='color:#ff1744;'>تعذر تحميل الإعدادات</p>"; });
 }
-
-function closeSettings() {
-    document.getElementById("settings-modal").classList.add("hidden");
-}
-
+function closeSettings() { document.getElementById("settings-modal").classList.add("hidden"); }
 function saveSettings() {
     const settings = {
         preferred_mode: document.getElementById("settings-preferred-mode").value,
@@ -1135,99 +891,46 @@ function saveSettings() {
         show_team_analysis: document.getElementById("settings-team-analysis").checked ? 1 : 0,
     };
     const bio = document.getElementById("settings-bio") ? document.getElementById("settings-bio").value.trim() : "";
-    fetch("/api/user/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings)
-    })
-    .then(r => r.json())
-    .then(d => {
-        if (d.success) {
-            // Also save bio if present
-            if (bio) {
-                fetch("/api/user/update-profile", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ bio })
-                }).catch(() => {});
-            }
-            alert("✅ تم حفظ الإعدادات");
-            closeSettings();
-        } else {
-            alert(d.error || "خطأ");
-        }
-    })
-    .catch(() => alert("فشل الحفظ"));
+    fetch("/api/user/settings", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(settings) })
+    .then(r=>r.json()).then(d=>{
+        if(d.success){
+            if(bio) fetch("/api/user/update-profile", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({bio}) }).catch(()=>{});
+            alert("✅ تم حفظ الإعدادات"); closeSettings();
+        } else alert(d.error||"خطأ");
+    }).catch(()=>alert("فشل الحفظ"));
 }
 
-// ═══ PLAYER NAME PICKER (after upload) ══
+// ═══ PLAYER NAME PICKER ══════════════════
 let pendingResults = null;
-
 function showPlayerPicker(players) {
     if (!players || !players.length) return;
     const select = document.getElementById("player-picker-select");
     select.innerHTML = players.map(p => `<option value="${p.name}">${p.name}</option>`).join("");
     document.getElementById("player-picker-modal").classList.remove("hidden");
 }
-
 function confirmPlayerPick() {
     const name = document.getElementById("player-picker-select").value;
     document.getElementById("player-picker-modal").classList.add("hidden");
     saveAsUserReplay(name);
 }
-
 function skipPlayerPick() {
     document.getElementById("player-picker-modal").classList.add("hidden");
     saveAsUserReplay(null);
 }
-
 function saveAsUserReplay(playerName) {
-    if (playerName) {
-        fetch("/api/user/link-player", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ player_name: playerName })
-        }).catch(() => {});
-    }
-    showResults(pendingResults);
-    pendingResults = null;
+    if (playerName) fetch("/api/user/link-player", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({player_name:playerName}) }).catch(()=>{});
+    showResults(pendingResults); pendingResults = null;
 }
 
-// Modify handleFile to show player picker for logged-in users
 handleFile = function(file) {
-    if (!file.name.toLowerCase().endsWith(".replay")) {
-        showError("الملف لازم يكون .replay");
-        return;
-    }
-    if (!localStorage.getItem("rl_api_key")) {
-        showError("سوي حفظ لمفتاح API الأول");
-        return;
-    }
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("game_mode", gameMode);
-    dropZone.classList.add("hidden");
-    uploadStatus.classList.remove("hidden");
-    fetch(API_URL, { method: "POST", body: formData })
-    .then(res => res.json())
-    .then(data => {
-        uploadStatus.classList.add("hidden");
-        dropZone.classList.remove("hidden");
-        if (data.success) {
-            pendingResults = data;
-            // Check if user is logged in and has players
-            fetch("/api/me").then(r => r.json()).then(u => {
-                if (u.user && u.user_id && data.players && data.players.length) {
-                    showPlayerPicker(data.players);
-                } else {
-                    showResults(data);
-                }
-            }).catch(() => showResults(data));
-        } else showError(data.error || "خطأ غير معروف");
-    })
-    .catch(() => {
-        uploadStatus.classList.add("hidden");
-        dropZone.classList.remove("hidden");
-        showError("تعذر الاتصال. شغل الباك اند.");
-    });
+    if (!file.name.toLowerCase().endsWith(".replay")) { showError("الملف لازم يكون .replay"); return; }
+    if (!localStorage.getItem("rl_api_key")) { showError("سوي حفظ لمفتاح API الأول"); return; }
+    const formData = new FormData(); formData.append("file", file); formData.append("game_mode", gameMode);
+    dropZone.classList.add("hidden"); uploadStatus.classList.remove("hidden");
+    fetch(API_URL, { method:"POST", body:formData })
+    .then(res=>res.json()).then(data=>{
+        uploadStatus.classList.add("hidden"); dropZone.classList.remove("hidden");
+        if(data.success){ pendingResults = data; fetch("/api/me").then(r=>r.json()).then(u=>{ if(u.user&&u.user_id&&data.players&&data.players.length) showPlayerPicker(data.players); else showResults(data); }).catch(()=>showResults(data)); }
+        else showError(data.error||"خطأ غير معروف");
+    }).catch(()=>{ uploadStatus.classList.add("hidden"); dropZone.classList.remove("hidden"); showError("تعذر الاتصال. شغل الباك اند."); });
 };

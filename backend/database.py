@@ -11,18 +11,27 @@ def get_db():
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
+def _generate_hash_tag(conn):
+    import random
+    for _ in range(100):
+        tag = str(random.randint(1000, 9999))
+        if not conn.execute("SELECT id FROM users WHERE hash_tag = ?", (tag,)).fetchone():
+            return tag
+    return str(random.randint(1000, 9999))
+
 def create_user(username, password=None, steam_id=None, epic_id=None):
     conn = get_db()
     try:
+        tag = _generate_hash_tag(conn)
         if steam_id:
-            conn.execute("INSERT INTO users (username, steam_id) VALUES (?, ?)",
-                          (username, steam_id))
+            conn.execute("INSERT INTO users (username, steam_id, hash_tag) VALUES (?, ?, ?)",
+                          (username, steam_id, tag))
         elif epic_id:
-            conn.execute("INSERT INTO users (username, epic_id) VALUES (?, ?)",
-                          (username, epic_id))
+            conn.execute("INSERT INTO users (username, epic_id, hash_tag) VALUES (?, ?, ?)",
+                          (username, epic_id, tag))
         else:
-            conn.execute("INSERT INTO users (username, password) VALUES (?, ?)",
-                          (username, generate_password_hash(password)))
+            conn.execute("INSERT INTO users (username, password, hash_tag) VALUES (?, ?, ?)",
+                          (username, generate_password_hash(password), tag))
         conn.commit()
         uid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         return uid
@@ -93,6 +102,7 @@ def init_db():
             password TEXT,
             steam_id TEXT UNIQUE,
             epic_id TEXT UNIQUE,
+            hash_tag TEXT DEFAULT '',
             display_name TEXT,
             avatar TEXT,
             bio TEXT,
@@ -181,6 +191,7 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_player_stats_replay ON player_stats(replay_id);
         CREATE INDEX IF NOT EXISTS idx_replays_mode ON replays(game_mode);
         CREATE INDEX IF NOT EXISTS idx_replays_user ON replays(user_id);
+        CREATE INDEX IF NOT EXISTS idx_users_hash_tag ON users(hash_tag);
     """)
     conn.commit()
     conn.close()
@@ -414,3 +425,60 @@ def update_user_profile(user_id, display_name=None, avatar=None, bio=None):
         conn.execute(f"UPDATE users SET {sets} WHERE id = ?", vals)
         conn.commit()
     conn.close()
+
+# ── PLAYER SEARCH ─────────────────────────
+def search_players(query, limit=20):
+    conn = get_db()
+    cursor = conn.cursor()
+    like = f"%{query}%"
+    cursor.execute("""
+        SELECT DISTINCT ps.player_name,
+               COUNT(r.id) AS total_games,
+               SUM(ps.goals) AS total_goals,
+               SUM(ps.assists) AS total_assists,
+               SUM(ps.saves) AS total_saves,
+               AVG(ps.score) AS avg_score
+        FROM player_stats ps
+        JOIN replays r ON ps.replay_id = r.id
+        WHERE ps.player_name LIKE ?
+        GROUP BY ps.player_name
+        ORDER BY total_games DESC
+        LIMIT ?
+    """, (like, limit))
+    rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return rows
+
+def get_player_full_profile(player_name):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT
+            COUNT(*) AS total_games,
+            SUM(ps.goals) AS total_goals,
+            SUM(ps.assists) AS total_assists,
+            SUM(ps.saves) AS total_saves,
+            SUM(ps.shots) AS total_shots,
+            AVG(ps.score) AS avg_score,
+            AVG(ps.shooting_pct) AS avg_shooting_pct,
+            AVG(ps.boost_avg) AS avg_boost,
+            AVG(ps.avg_speed) AS avg_speed,
+            AVG(ps.percent_offensive) AS avg_offensive,
+            AVG(ps.percent_defensive) AS avg_defensive,
+            AVG(ps.percent_supersonic) AS avg_supersonic
+        FROM player_stats ps
+        JOIN replays r ON ps.replay_id = r.id
+        WHERE ps.player_name = ?
+    """, (player_name,))
+    stats = dict(cursor.fetchone())
+    cursor.execute("""
+        SELECT r.game_mode, r.map_name, r.uploaded_at, r.blue_goals, r.orange_goals,
+               ps.goals, ps.assists, ps.saves, ps.score, ps.team
+        FROM player_stats ps
+        JOIN replays r ON ps.replay_id = r.id
+        WHERE ps.player_name = ?
+        ORDER BY r.uploaded_at DESC LIMIT 20
+    """, (player_name,))
+    games = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return stats, games
