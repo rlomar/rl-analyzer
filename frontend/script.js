@@ -72,8 +72,8 @@ function saveApiKey() {
 
 // ── File Upload ────────────────────────
 dropZone.addEventListener("click",()=>fileInput.click());
-dropZone.addEventListener("dragover",e=>{e.preventDefault();dropZone.classList.add("dragover");});
-dropZone.addEventListener("dragleave",()=>{dropZone.classList.remove("dragover");});
+dropZone.addEventListener("dragover", () => { dropZone.classList.add("drag-active"); });
+dropZone.addEventListener("dragleave", () => { dropZone.classList.remove("drag-active"); });
 dropZone.addEventListener("drop",e=>{e.preventDefault();dropZone.classList.remove("dragover");if(e.dataTransfer.files.length>0)handleFile(e.dataTransfer.files[0]);});
 fileInput.addEventListener("change",e=>{if(e.target.files.length>0)handleFile(e.target.files[0]);});
 

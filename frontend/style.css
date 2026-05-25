@@ -193,7 +193,7 @@ h1 span {
 }
 
 .drop-zone:hover,
-.drop-zone.dragover {
+.drop-zone.drag-active {
     border-color: #5b8cff;
     transform: translateY(-4px);
     box-shadow:
