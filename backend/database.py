@@ -465,6 +465,71 @@ def update_user_settings(user_id, settings):
         conn.commit()
     conn.close()
 
+def get_radar_metrics(user_id):
+    conn = get_db()
+    stats = get_user_aggregated_stats(user_id)
+    if not stats or not stats.get("total_replays"):
+        conn.close()
+        return {"Positioning":0,"Rotation":0,"Boost Usage":0,"Accuracy":0,"Speed":0}
+    off = stats.get("avg_offensive", 0) or 0
+    df = stats.get("avg_defensive", 0) or 0
+    spd = stats.get("avg_speed", 0) or 0
+    sup = stats.get("avg_supersonic", 0) or 0
+    db = stats.get("avg_dist_ball", 0) or 0
+    dm = stats.get("avg_dist_mates", 0) or 0
+    acc = stats.get("avg_shooting_pct", 0) or 0
+
+    # Boost & rotation data
+    b_row = _c(conn, """
+        SELECT AVG(ps.boost_avg) AS avg_boost,
+               AVG(ps.boost_wasted_pct) AS avg_waste,
+               AVG(ps.percent_zero_boost) AS avg_zero,
+               AVG(ps.time_behind_ball) AS avg_behind,
+               AVG(ps.time_infront_ball) AS avg_infront
+        FROM player_stats ps
+        JOIN replays r ON ps.replay_id = r.id
+        WHERE r.user_id = %s AND ps.player_name = r.user_player_name
+    """, (user_id,)).fetchone()
+    conn.close()
+    br = dict(b_row) if b_row else {}
+    b_avg = br.get("avg_boost", 0) or 0
+    b_waste = br.get("avg_waste", 0) or 0
+    b_zero = br.get("avg_zero", 0) or 0
+    behind = br.get("avg_behind", 0) or 0
+    infront = br.get("avg_infront", 0) or 0
+    behind_pct = (behind / (behind + infront) * 100) if (behind + infront) > 0 else 50
+
+    # Positioning: balanced O/D + ball proximity
+    bal = 100 - abs(off - df)
+    ball_norm = max(0, 100 - abs(db - 3000) / 30)
+    pos = round((bal * 0.6 + ball_norm * 0.4))
+
+    # Rotation: behind/infront balance + mates proximity
+    rot_bal = 100 - abs(50 - behind_pct) * 2
+    mate_norm = max(0, 100 - dm / 20)
+    rot = round((rot_bal * 0.5 + mate_norm * 0.5))
+
+    # Boost: avg boost efficiency
+    b_eff = 100 - min(b_waste * 3, 60) - min(b_zero * 2, 40)
+    b_norm = min(100, b_avg * 1.5)
+    boost_val = round((b_norm * 0.3 + b_eff * 0.7))
+
+    # Accuracy
+    acc_val = round(min(100, acc))
+
+    # Speed
+    spd_norm = min(100, max(0, (spd - 1000) / 12))
+    sup_norm = min(100, sup * 2)
+    speed_val = round((spd_norm * 0.6 + sup_norm * 0.4))
+
+    return {
+        "Positioning": max(0, min(100, pos)),
+        "Rotation": max(0, min(100, rot)),
+        "Boost Usage": max(0, min(100, boost_val)),
+        "Accuracy": max(0, min(100, acc_val)),
+        "Speed": max(0, min(100, speed_val)),
+    }
+
 def award_xp(user_id, goals=0, assists=0, saves=0, score=0, won=False):
     xp = 100  # base
     xp += goals * 25

@@ -126,6 +126,15 @@
         <button class="btn btn-sm" id="edit-profile-btn" onclick="showEditProfile()" style="margin-bottom:20px;">⚙️ تعديل البروفايل</button>
         <button class="btn btn-sm" id="copy-profile-link" onclick="copyProfileLink()" style="margin-bottom:20px;margin-right:8px;">🔗 نسخ الرابط</button>
 
+        <div id="radar-section" class="hidden" style="margin-bottom:24px;">
+            <div class="card">
+                <h2 style="margin-bottom:16px;">📡 Radar Performance</h2>
+                <div style="display:flex;justify-content:center;">
+                    <canvas id="radar-canvas" width="400" height="400"></canvas>
+                </div>
+            </div>
+        </div>
+
         <div class="profile-tabs hidden" id="profile-tabs">
             <button class="tab active">Overview</button>
             <button class="tab">Matches</button>

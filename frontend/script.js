@@ -83,6 +83,10 @@ fetch("/api/user/achievements").then(r=>r.json()).then(ad=>{
     c.innerHTML=achs.map(a=>`<div class="achievement ${a.unlocked?"unlocked":"locked"}">${a.icon} ${a.name}</div>`).join("");
     document.getElementById("achievements-grid").classList.remove("hidden");
 }).catch(()=>{});
+// Fetch radar
+fetch("/api/user/radar").then(r=>r.json()).then(rd=>{
+    if(rd.radar){renderRadarChart(rd.radar);document.getElementById("radar-section").classList.remove("hidden");}
+}).catch(()=>{});
             }).catch(()=>{});
         } else {
             uph.classList.add("hidden");
@@ -90,6 +94,7 @@ fetch("/api/user/achievements").then(r=>r.json()).then(ad=>{
 document.getElementById("profile-tabs").classList.add("hidden");
 document.getElementById("achievements-grid").classList.add("hidden");
 document.getElementById("edit-profile-btn").classList.add("hidden");
+document.getElementById("radar-section").classList.add("hidden");
         }
         // Check if this user is admin
         fetch("/api/admin/check").then(r=>r.json()).then(ad=>{
@@ -464,3 +469,81 @@ function showAdminPanel(){
     }).catch(()=>{c.innerHTML="<p style='color:#ff1744;'>تعذر تحميل لوحة التحكم</p>";});
 }
 function closeAdminPanel(){document.getElementById("admin-modal").classList.add("hidden");}
+
+// ── RADAR CHART ─────────────────────────
+function renderRadarChart(data){
+    const canvas=document.getElementById("radar-canvas");
+    const ctx=canvas.getContext("2d");
+    const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2,R=160;
+    const labels=["Positioning","Rotation","Boost Usage","Accuracy","Speed"];
+    const angles=labels.map((_,i)=>-Math.PI/2+2*Math.PI*i/labels.length);
+    const values=labels.map(l=>Math.min(100,Math.max(0,data[l]||0)));
+
+    ctx.clearRect(0,0,W,H);
+    ctx.font="13px Tajawal,sans-serif";
+
+    // Grid rings
+    for(let ring=1;ring<=5;ring++){
+        const r=R*ring/5;
+        ctx.beginPath();
+        for(let i=0;i<labels.length;i++){
+            const x=cx+r*Math.cos(angles[i]),y=cy+r*Math.sin(angles[i]);
+            i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+        }
+        ctx.closePath();
+        ctx.strokeStyle="rgba(255,255,255,0.08)";
+        ctx.lineWidth=1;
+        ctx.stroke();
+    }
+
+    // Axes
+    for(let i=0;i<labels.length;i++){
+        ctx.beginPath();
+        ctx.moveTo(cx,cy);
+        ctx.lineTo(cx+R*Math.cos(angles[i]),cy+R*Math.sin(angles[i]));
+        ctx.strokeStyle="rgba(255,255,255,0.12)";
+        ctx.stroke();
+    }
+
+    // Labels
+    for(let i=0;i<labels.length;i++){
+        const x=cx+(R+30)*Math.cos(angles[i]),y=cy+(R+30)*Math.sin(angles[i]);
+        const val=values[i];
+        ctx.fillStyle="#ccd6f6";
+        ctx.textAlign="center";
+        ctx.textBaseline="middle";
+        const scoreColor=val>=70?"#00c853":val>=40?"#ffab00":"#ff1744";
+        ctx.fillText(labels[i],x,y-10);
+        ctx.fillStyle=scoreColor;
+        ctx.font="bold 16px Tajawal,sans-serif";
+        ctx.fillText(val,x,y+12);
+        ctx.font="13px Tajawal,sans-serif";
+    }
+
+    // Data polygon
+    ctx.beginPath();
+    for(let i=0;i<labels.length;i++){
+        const v=values[i]/100,r=R*v;
+        const x=cx+r*Math.cos(angles[i]),y=cy+r*Math.sin(angles[i]);
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    ctx.fillStyle="rgba(91,140,255,0.2)";
+    ctx.fill();
+    ctx.strokeStyle="#5b8cff";
+    ctx.lineWidth=2.5;
+    ctx.stroke();
+
+    // Dots
+    for(let i=0;i<labels.length;i++){
+        const v=values[i]/100,r=R*v;
+        const x=cx+r*Math.cos(angles[i]),y=cy+r*Math.sin(angles[i]);
+        ctx.beginPath();
+        ctx.arc(x,y,5,0,2*Math.PI);
+        ctx.fillStyle="#5b8cff";
+        ctx.fill();
+        ctx.strokeStyle="#fff";
+        ctx.lineWidth=1.5;
+        ctx.stroke();
+    }
+}
