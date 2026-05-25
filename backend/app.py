@@ -525,6 +525,29 @@ def api_players_search():
     results = search_players(query)
     return jsonify({"players": results})
 
+@app.route("/api/user-search", methods=["GET"])
+def api_user_search():
+    query = request.args.get("q", "").strip()
+    if not query:
+        return jsonify({"user": None})
+    from database import get_db
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, display_name, hash_tag FROM users WHERE display_name LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE LIMIT 1", (f"%{query}%", f"%{query}%"))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        r = dict(row)
+        tag = r.get("hash_tag", "")
+        display = r.get("display_name") or r.get("username", "")
+        return jsonify({"user": {
+            "username": r["username"],
+            "display_name": display,
+            "hash_tag": tag,
+            "tagged_name": f"{display}#{tag}" if tag else display,
+        }})
+    return jsonify({"user": None})
+
 @app.route("/api/players/profile/<player_name>", methods=["GET"])
 def api_player_profile(player_name):
     stats, games = get_player_full_profile(player_name)

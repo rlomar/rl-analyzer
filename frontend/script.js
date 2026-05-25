@@ -128,7 +128,11 @@ function handleSearch(){
         fetch(`/api/players/search?q=${encodeURIComponent(inp)}`).then(r=>r.json()).then(d=>{
             const pl=d.players||[];
             if(!pl.length){res.innerHTML='<div class="search-result-item search-result-empty">لا توجد نتائج</div>';res.classList.remove("hidden");return;}
-            res.innerHTML=pl.map(p=>`<div class="search-result-item" onclick="showPlayerProfile('${p.player_name}')"><span class="search-result-name">${p.player_name}</span><span class="search-result-stats">${p.total_games} مباريات | ${p.total_goals} goals | ${Math.round(p.avg_score||0)} avg</span></div>`).join("");
+            res.innerHTML=pl.map(p=>{
+                const isUser=p.source==="user";
+                const statsTxt=isUser?`مستخدم مسجل`:`${p.total_games} مباريات | ${p.total_goals} goals | ${Math.round(p.avg_score||0)} avg`;
+                return `<div class="search-result-item search-result-${p.source}" onclick="showPlayerProfile('${p.player_name}')"><span class="search-result-name">${isUser?"👤 ":""}${p.player_name}</span><span class="search-result-stats">${statsTxt}</span></div>`;
+            }).join("");
             res.classList.remove("hidden");
         }).catch(()=>{});
     },300);
@@ -139,39 +143,57 @@ function showPlayerProfile(pn){
     document.getElementById("search-results").classList.add("hidden");
     const modal=document.getElementById("player-profile-modal"),content=document.getElementById("player-profile-content");
     modal.classList.remove("hidden"); content.innerHTML="<p style='color:#8892b0;'>جاري التحميل...</p>";
-    // Fetch profile stats + replay list
-    Promise.all([
-        fetch(`/api/players/profile/${encodeURIComponent(pn)}`).then(r=>r.json()),
-        fetch(`/api/players/${encodeURIComponent(pn)}/replays`).then(r=>r.json())
-    ]).then(([profile,replayData])=>{
-        if(profile.error){content.innerHTML=`<p style='color:#ff1744;'>${profile.error}</p>`;return;}
-        const s=profile.stats||{},games=profile.games||[],replays=replayData.replays||[];
-        let html=`
-            <div class="profile-header-card">
-                <div class="profile-avatar">${pn.charAt(0).toUpperCase()}</div>
-                <div class="profile-info">
-                    <h3 style="color:#fff;font-size:20px;margin-bottom:4px;">${pn}</h3>
-                    <p style="color:#8892b0;font-size:13px;">${s.total_games||0} مباريات إجمالي</p>
-                </div>
-            </div>
-            <div class="profile-stats-grid">
-                <div class="profile-stat"><span class="profile-stat-value">${s.total_goals||0}</span><span class="profile-stat-label">إجمالي الأهداف</span></div>
-                <div class="profile-stat"><span class="profile-stat-value">${s.total_assists||0}</span><span class="profile-stat-label">إجمالي التمريرات</span></div>
-                <div class="profile-stat"><span class="profile-stat-value">${s.total_saves||0}</span><span class="profile-stat-label">إجمالي التصديات</span></div>
-                <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_shooting_pct||0)}%</span><span class="profile-stat-label">متوسط دقة التسديد</span></div>
-                <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_boost||0)}</span><span class="profile-stat-label">متوسط البوست</span></div>
-                <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_score||0)}</span><span class="profile-stat-label">متوسط السكور</span></div>
-            </div>`;
-        if(replays.length){
-            html+=`<h4 style="color:#fff;margin:15px 0 10px;">🕐 الريبلايات</h4><div class="table-wrap" style="max-height:300px;overflow-y:auto;"><table class="history-table"><thead><tr><th>#</th><th>الطور</th><th>الخريطة</th><th>أ/ت/تص</th><th>سكور</th><th>نتيجة</th><th>التاريخ</th><th></th></tr></thead><tbody>`;
-            replays.forEach((g,i)=>{
-                const won=(g.team==="blue"&&g.blue_goals>g.orange_goals)||(g.team==="orange"&&g.orange_goals>g.blue_goals);
-                html+=`<tr><td>#${replays.length-i}</td><td>${g.game_mode||"-"}</td><td>${g.map_name||"-"}</td><td>${g.goals||0}/${g.assists||0}/${g.saves||0}</td><td>${g.score||0}</td><td style="color:${won?"#00c853":"#ff1744"}">${won?"فوز":"خسارة"}</td><td style="font-size:12px;color:#5a6a8a">${g.uploaded_at?g.uploaded_at.slice(0,10):"-"}</td>
-                <td>${g.replay_id?`<a href="/api/replay/${g.replay_id}/download" class="btn btn-sm" style="padding:4px 10px;font-size:11px;text-decoration:none;">⬇</a>`:""}</td></tr>`;
-            });
-            html+=`</tbody></table></div>`;
+    // Try player stats first; if empty, check if registered user
+    fetch(`/api/players/profile/${encodeURIComponent(pn)}`).then(r=>r.json()).then(profile=>{
+        if(profile.error || !profile.stats || !profile.stats.total_games){
+            fetch(`/api/user-search?q=${encodeURIComponent(pn)}`).then(r=>r.json()).then(ud=>{
+                const u=ud.user;
+                if(u){
+                    let html=`
+                        <div class="profile-header-card">
+                            <div class="profile-avatar">${u.display_name.charAt(0).toUpperCase()}</div>
+                            <div class="profile-info">
+                                <h3 style="color:#fff;font-size:20px;margin-bottom:4px;">${u.tagged_name||u.display_name}</h3>
+                                <p style="color:#8892b0;font-size:13px;">👤 مستخدم مسجل — لا توجد ريبلايات بعد</p>
+                            </div>
+                        </div>`;
+                    content.innerHTML=html;
+                } else {
+                    content.innerHTML="<p style='color:#ff1744;'>لا توجد بيانات لهذا اللاعب</p>";
+                }
+            }).catch(()=>{content.innerHTML="<p style='color:#ff1744;'>لا توجد بيانات لهذا اللاعب</p>";});
+            return;
         }
-        content.innerHTML=html;
+        const s=profile.stats||{},games=profile.games||[];
+        fetch(`/api/players/${encodeURIComponent(pn)}/replays`).then(r=>r.json()).then(replayData=>{
+            const replays=replayData.replays||[];
+            let html=`
+                <div class="profile-header-card">
+                    <div class="profile-avatar">${pn.charAt(0).toUpperCase()}</div>
+                    <div class="profile-info">
+                        <h3 style="color:#fff;font-size:20px;margin-bottom:4px;">${pn}</h3>
+                        <p style="color:#8892b0;font-size:13px;">${s.total_games||0} مباريات إجمالي</p>
+                    </div>
+                </div>
+                <div class="profile-stats-grid">
+                    <div class="profile-stat"><span class="profile-stat-value">${s.total_goals||0}</span><span class="profile-stat-label">إجمالي الأهداف</span></div>
+                    <div class="profile-stat"><span class="profile-stat-value">${s.total_assists||0}</span><span class="profile-stat-label">إجمالي التمريرات</span></div>
+                    <div class="profile-stat"><span class="profile-stat-value">${s.total_saves||0}</span><span class="profile-stat-label">إجمالي التصديات</span></div>
+                    <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_shooting_pct||0)}%</span><span class="profile-stat-label">متوسط دقة التسديد</span></div>
+                    <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_boost||0)}</span><span class="profile-stat-label">متوسط البوست</span></div>
+                    <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_score||0)}</span><span class="profile-stat-label">متوسط السكور</span></div>
+                </div>`;
+            if(replays.length){
+                html+=`<h4 style="color:#fff;margin:15px 0 10px;">🕐 الريبلايات</h4><div class="table-wrap" style="max-height:300px;overflow-y:auto;"><table class="history-table"><thead><tr><th>#</th><th>الطور</th><th>الخريطة</th><th>أ/ت/تص</th><th>سكور</th><th>نتيجة</th><th>التاريخ</th><th></th></tr></thead><tbody>`;
+                replays.forEach((g,i)=>{
+                    const won=(g.team==="blue"&&g.blue_goals>g.orange_goals)||(g.team==="orange"&&g.orange_goals>g.blue_goals);
+                    html+=`<tr><td>#${replays.length-i}</td><td>${g.game_mode||"-"}</td><td>${g.map_name||"-"}</td><td>${g.goals||0}/${g.assists||0}/${g.saves||0}</td><td>${g.score||0}</td><td style="color:${won?"#00c853":"#ff1744"}">${won?"فوز":"خسارة"}</td><td style="font-size:12px;color:#5a6a8a">${g.uploaded_at?g.uploaded_at.slice(0,10):"-"}</td>
+                    <td>${g.replay_id?`<a href="/api/replay/${g.replay_id}/download" class="btn btn-sm" style="padding:4px 10px;font-size:11px;text-decoration:none;">⬇</a>`:""}</td></tr>`;
+                });
+                html+=`</tbody></table></div>`;
+            }
+            content.innerHTML=html;
+        }).catch(()=>{content.innerHTML="<p style='color:#ff1744;'>تعذر تحميل بيانات اللاعب</p>";});
     }).catch(()=>{content.innerHTML="<p style='color:#ff1744;'>تعذر تحميل بيانات اللاعب</p>";});
 }
 function closePlayerProfile(){document.getElementById("player-profile-modal").classList.add("hidden");}

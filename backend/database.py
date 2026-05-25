@@ -449,21 +449,36 @@ def search_players(query, limit=20):
     conn = get_db()
     cursor = conn.cursor()
     like = f"%{query}%"
-    # Use COLLATE NOCASE for case-insensitive search (handles Arabic)
     cursor.execute("""
-        SELECT DISTINCT ps.player_name,
-               COUNT(r.id) AS total_games,
-               SUM(ps.goals) AS total_goals,
-               SUM(ps.assists) AS total_assists,
-               SUM(ps.saves) AS total_saves,
-               AVG(ps.score) AS avg_score
-        FROM player_stats ps
-        JOIN replays r ON ps.replay_id = r.id
-        WHERE ps.player_name LIKE ? COLLATE NOCASE
-        GROUP BY ps.player_name
-        ORDER BY total_games DESC
+        SELECT player_name, total_games, total_goals, total_assists, total_saves, avg_score, source FROM (
+            SELECT ps.player_name,
+                   COUNT(r.id) AS total_games,
+                   SUM(ps.goals) AS total_goals,
+                   SUM(ps.assists) AS total_assists,
+                   SUM(ps.saves) AS total_saves,
+                   AVG(ps.score) AS avg_score,
+                   'player' AS source
+            FROM player_stats ps
+            JOIN replays r ON ps.replay_id = r.id
+            WHERE ps.player_name LIKE ? COLLATE NOCASE
+            GROUP BY ps.player_name
+
+            UNION ALL
+
+            SELECT IFNULL(display_name, username) AS player_name,
+                   0 AS total_games,
+                   0 AS total_goals,
+                   0 AS total_assists,
+                   0 AS total_saves,
+                   0 AS avg_score,
+                   'user' AS source
+            FROM users
+            WHERE (display_name LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE)
+              AND display_name IS NOT NULL
+        ) combined
+        ORDER BY total_games DESC, player_name ASC
         LIMIT ?
-    """, (like, limit))
+    """, (like, like, like, limit))
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
     return rows
