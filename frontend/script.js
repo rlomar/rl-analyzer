@@ -43,7 +43,7 @@ function checkAuth() {
                 const u=d.user||{}, s=d.stats||{}, ttl=s.total_replays||0;
                 const tag=u.tagged_name||u.display_name||u.username||"مستخدم";
                 const xpPct=Math.min(100,Math.round(((ttl%10)/10)*100));
-                const rank=ttl>=50?"GC":ttl>=30?"Champ":ttl>=20?"Diamond":ttl>=10?"Plat":ttl>=5?"Gold":ttl>=2?"Silver":"Bronze";
+                const rank=ttl>=100?"SSL":ttl>=50?"GC":ttl>=30?"Champ":ttl>=20?"Diamond":ttl>=10?"Plat":ttl>=5?"Gold":ttl>=2?"Silver":"Bronze";
                 document.getElementById("uph-avatar").textContent=tag.charAt(0).toUpperCase();
                 document.getElementById("uph-rank").textContent=rank;
                 document.getElementById("uph-name").textContent=tag;
@@ -51,6 +51,10 @@ function checkAuth() {
                 document.getElementById("uph-level").textContent="Level "+(Math.floor(ttl/5)+1);
                 document.getElementById("uph-xp").style.width=xpPct+"%";
                 document.getElementById("uph-xp-text").textContent=(ttl%10)+" / 10 XP";
+                // Banner color by rank
+                const banner=document.querySelector("#user-profile-header .profile-banner");
+                const colors={Bronze:"linear-gradient(135deg,#8d6e63,#6d4c41,#4e342e)",Silver:"linear-gradient(135deg,#bdbdbd,#9e9e9e,#757575)",Gold:"linear-gradient(135deg,#ffd54f,#ffb300,#ff8f00)",Plat:"linear-gradient(135deg,#80cbc4,#26a69a,#00897b)",Diamond:"linear-gradient(135deg,#64b5f6,#1e88e5,#1565c0)",Champ:"linear-gradient(135deg,#ce93d8,#8e24aa,#6a1b9a)",GC:"linear-gradient(135deg,#ef5350,#d32f2f,#b71c1c)",SSL:"linear-gradient(135deg,#b388ff,#7c4dff,#651fff)"};
+                if(banner) banner.style.background=colors[rank]||colors.Bronze;
                 uph.classList.remove("hidden");
                 // Stats cards
                 document.getElementById("stat-goals").textContent=s.total_goals||0;
@@ -63,7 +67,7 @@ document.getElementById("profile-tabs").classList.remove("hidden");
 fetch("/api/user/achievements").then(r=>r.json()).then(ad=>{
     const achs=ad.achievements||[];
     const c=document.getElementById("achievements-content");
-    c.innerHTML=achs.map(a=>`<div class="achievement-item ${a.unlocked?"unlocked":"locked"}"><span class="achievement-icon">${a.icon}</span><span class="achievement-name">${a.name}</span><span class="achievement-desc">${a.desc}</span></div>`).join("");
+    c.innerHTML=achs.map(a=>`<div class="achievement ${a.unlocked?"unlocked":"locked"}">${a.icon} ${a.name}</div>`).join("");
     document.getElementById("achievements-grid").classList.remove("hidden");
 }).catch(()=>{});
             }).catch(()=>{});
@@ -293,11 +297,11 @@ function showProfile(){
         const xpPct=Math.min(100,Math.round(((ttl%10)/10)*100));
         let html=`
 <div class="profile-header">
-    <div class="profile-banner"></div>
+    <div class="profile-banner" style="background:${ttl>=100?'linear-gradient(135deg,#b388ff,#7c4dff,#651fff)':ttl>=50?'linear-gradient(135deg,#ef5350,#d32f2f,#b71c1c)':ttl>=30?'linear-gradient(135deg,#ce93d8,#8e24aa,#6a1b9a)':ttl>=20?'linear-gradient(135deg,#64b5f6,#1e88e5,#1565c0)':ttl>=10?'linear-gradient(135deg,#80cbc4,#26a69a,#00897b)':ttl>=5?'linear-gradient(135deg,#ffd54f,#ffb300,#ff8f00)':ttl>=2?'linear-gradient(135deg,#bdbdbd,#9e9e9e,#757575)':'linear-gradient(135deg,#8d6e63,#6d4c41,#4e342e)'}"></div>
     <div class="profile-main">
         <div class="profile-avatar-wrapper">
             <div class="profile-avatar">${tag.charAt(0).toUpperCase()}</div>
-            <div class="rank-badge">${ttl>=50?"GC":ttl>=30?"Champ":ttl>=20?"Diamond":ttl>=10?"Plat":ttl>=5?"Gold":ttl>=2?"Silver":"Bronze"}</div>
+            <div class="rank-badge">${ttl>=100?"SSL":ttl>=50?"GC":ttl>=30?"Champ":ttl>=20?"Diamond":ttl>=10?"Plat":ttl>=5?"Gold":ttl>=2?"Silver":"Bronze"}</div>
         </div>
         <div class="profile-info">
             <h2>${tag}</h2>
