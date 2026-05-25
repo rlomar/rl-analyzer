@@ -192,13 +192,17 @@ h1 span {
     overflow: hidden;
 }
 
-.drop-zone:hover,
-.drop-zone.drag-active {
+.drop-zone:hover {
     border-color: #5b8cff;
     transform: translateY(-4px);
     box-shadow:
         0 0 25px rgba(91,140,255,0.25),
         0 0 60px rgba(91,140,255,0.12);
+}
+.drag-active {
+    border-color: #5b8cff;
+    transform: scale(1.02);
+    box-shadow: 0 0 40px rgba(91,140,255,0.35);
 }
 
 /* ─── AUTH ──────────────────────────────── */
