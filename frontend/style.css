@@ -859,21 +859,21 @@ h1 span {
 }
 
 .btn {
-    background: linear-gradient(135deg, #0078ff, #0050b3);
+    background: linear-gradient(135deg, #5b8cff, #7a5cff);
     color: #fff;
     border: none;
     padding: 12px 30px;
-    border-radius: 10px;
+    border-radius: 14px;
     font-size: 16px;
     font-weight: 700;
     font-family: 'Tajawal', sans-serif;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: 0.25s ease;
 }
 
 .btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 119, 255, 0.3);
+    box-shadow: 0 10px 20px rgba(91,140,255,0.25);
 }
 
 .error-card {
