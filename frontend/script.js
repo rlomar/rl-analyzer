@@ -1,3 +1,7 @@
+// ═══ SPLASH SCREEN ═════════════════════
+setTimeout(()=>document.getElementById("splash-screen").classList.add("fade-out"),5000);
+setTimeout(()=>{const s=document.getElementById("splash-screen");if(s)s.remove()},5600);
+
 const API_URL = "/api/analyze";
 const SET_KEY_URL = "/api/set-key";
 const apiInput = document.getElementById("api-key-input");
