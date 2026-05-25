@@ -254,10 +254,40 @@ function showProfile(){
     fetch("/api/user/profile").then(r=>r.json()).then(d=>{
         if(d.error){c.innerHTML=`<p style='color:#ff1744;'>${d.error}</p>`;return;}
         const u=d.user||{},s=d.stats||{},recent=d.recent||[],ttl=s.total_replays||0,tag=u.tagged_name||u.display_name||u.username||"مستخدم";
-        let html=`<div class="profile-header-card"><div class="profile-avatar">${tag.charAt(0).toUpperCase()}</div><div class="profile-info"><h3 style="color:#fff;font-size:20px;margin-bottom:4px;">${tag}</h3><p style="color:#8892b0;font-size:13px;">${u.username||""}</p></div></div>`;
-        if(ttl>0)html+=`<div class="profile-stats-grid"><div class="profile-stat"><span class="profile-stat-value">${ttl}</span><span class="profile-stat-label">إجمالي الريبلايات</span></div><div class="profile-stat"><span class="profile-stat-value">${s.total_goals||0}</span><span class="profile-stat-label">إجمالي الأهداف</span></div><div class="profile-stat"><span class="profile-stat-value">${s.total_assists||0}</span><span class="profile-stat-label">إجمالي التمريرات</span></div><div class="profile-stat"><span class="profile-stat-value">${s.total_saves||0}</span><span class="profile-stat-label">إجمالي التصديات</span></div><div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_shooting_pct||0)}%</span><span class="profile-stat-label">معدل دقة التسديد</span></div><div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_boost||0)}</span><span class="profile-stat-label">معدل البوست</span></div></div>`;
+        const xpPct=Math.min(100,Math.round(((ttl%10)/10)*100));
+        let html=`
+<div class="profile-header">
+    <div class="profile-banner"></div>
+    <div class="profile-main">
+        <div class="profile-avatar-wrapper">
+            <div class="profile-avatar">${tag.charAt(0).toUpperCase()}</div>
+            <div class="rank-badge">${ttl>=50?"GC":ttl>=20?"Champ":ttl>=10?"Diamond":ttl>=5?"Plat":"Gold"}</div>
+        </div>
+        <div class="profile-info">
+            <h2>${tag}</h2>
+            <p class="profile-sub">${u.username||""}</p>
+            <div class="profile-level">
+                <span>Level ${Math.floor(ttl/5)+1}</span>
+                <div class="xp-bar"><div class="xp-fill" style="width:${xpPct}%"></div></div>
+                <small>${ttl%10} / 10 XP</small>
+            </div>
+        </div>
+    </div>
+</div>`;
+        // Stats cards
+        if(ttl>0)html+=`
+<div class="profile-stats-grid">
+    <div class="profile-stat"><span class="profile-stat-value">${ttl}</span><span class="profile-stat-label">إجمالي الريبلايات</span></div>
+    <div class="profile-stat"><span class="profile-stat-value">${s.total_goals||0}</span><span class="profile-stat-label">الأهداف</span></div>
+    <div class="profile-stat"><span class="profile-stat-value">${s.total_assists||0}</span><span class="profile-stat-label">التمريرات</span></div>
+    <div class="profile-stat"><span class="profile-stat-value">${s.total_saves||0}</span><span class="profile-stat-label">التصديات</span></div>
+    <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_shooting_pct||0)}%</span><span class="profile-stat-label">دقة التسديد</span></div>
+    <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_boost||0)}</span><span class="profile-stat-label">معدل البوست</span></div>
+</div>`;
         else html+=`<p style="color:#8892b0;margin:20px 0;text-align:center;">ما عندك ريبلايات مسجلة لحسابك. ارفع ريبلاي واختر اسمك عشان تبدأ.</p>`;
+        // Match history
         if(recent.length>0){html+=`<h4 style="color:#fff;margin:20px 0 10px;">🕐 آخر الريبلايات</h4><div class="table-wrap" style="max-height:250px;overflow-y:auto;"><table class="history-table"><thead><tr><th>#</th><th>اللاعب</th><th>الطور</th><th>أ/ت/تص</th><th>سكور</th><th>التاريخ</th><th></th></tr></thead><tbody>`;recent.forEach((g,i)=>{html+=`<tr><td>#${recent.length-i}</td><td>${g.player_name||"-"}</td><td>${g.game_mode||"-"}</td><td>${g.goals||0}/${g.assists||0}/${g.saves||0}</td><td>${g.score||0}</td><td style="font-size:12px;color:#5a6a8a">${g.uploaded_at?g.uploaded_at.slice(0,10):"-"}</td><td>${g.replay_id?`<a href="/api/replay/${g.replay_id}/download" class="btn btn-sm" style="padding:2px 8px;font-size:11px;text-decoration:none;">⬇</a>`:""}</td></tr>`;});html+=`</tbody></table></div>`;}
+        // Link player name
         html+=`<hr style="border-color:rgba(255,255,255,0.05);margin:20px 0;"><div class="profile-settings-section"><h4 style="color:#fff;margin-bottom:15px;">ربط اسمك في الريبلاي</h4><p style="color:#8892b0;font-size:13px;margin-bottom:10px;">اكتب اسمك عشان الريبلايات الجديدة ترتبط بحسابك تلقائياً:</p><div style="display:flex;gap:10px;"><input type="text" id="player-name-setting" placeholder="اسمك في روكيت ليق" style="flex:1;padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;direction:rtl;"><button class="btn" onclick="savePlayerName()">حفظ</button></div></div>`;
         c.innerHTML=html;if(u.display_name)document.getElementById("player-name-setting").value=u.display_name;
     }).catch(()=>{c.innerHTML="<p style='color:#ff1744;'>تعذر تحميل الملف الشخصي</p>";});
