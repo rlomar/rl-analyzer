@@ -58,10 +58,12 @@ function checkAuth() {
                 document.getElementById("stat-accuracy").textContent=Math.round(s.avg_shooting_pct||0)+"%";
                 document.getElementById("stat-mvp").textContent=Math.round((s.total_replays||0)*0.2);
                 document.getElementById("stats-grid").classList.remove("hidden");
+document.getElementById("profile-tabs").classList.remove("hidden");
             }).catch(()=>{});
         } else {
             uph.classList.add("hidden");
             document.getElementById("stats-grid").classList.add("hidden");
+document.getElementById("profile-tabs").classList.add("hidden");
         }
         // Check if this user is admin
         fetch("/api/admin/check").then(r=>r.json()).then(ad=>{
