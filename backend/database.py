@@ -9,9 +9,39 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+from werkzeug.security import generate_password_hash, check_password_hash
+
+def create_user(username, password):
+    conn = get_db()
+    try:
+        conn.execute("INSERT INTO users (username, password) VALUES (?, ?)",
+                      (username, generate_password_hash(password)))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def verify_user(username, password):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+    if row and check_password_hash(row["password"], password):
+        return True
+    return False
+
 def init_db():
     conn = get_db()
     conn.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE TABLE IF NOT EXISTS replays (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             replay_id TEXT,

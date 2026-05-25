@@ -40,6 +40,79 @@ if (savedKey) {
     });
 }
 
+// ═══ AUTH ═══════════════════════════════════
+let authMode = "login";
+
+function checkAuth() {
+    fetch("/api/me")
+        .then(r => r.json())
+        .then(data => {
+            if (data.user) {
+                document.getElementById("auth-logged-out").classList.add("hidden");
+                document.getElementById("auth-logged-in").classList.remove("hidden");
+                document.getElementById("auth-username").textContent = data.user;
+            }
+        })
+        .catch(() => {});
+}
+
+function showAuthModal(mode) {
+    authMode = mode;
+    document.getElementById("auth-modal").classList.remove("hidden");
+    document.getElementById("auth-modal-title").textContent = mode === "login" ? "تسجيل دخول" : "إنشاء حساب جديد";
+    document.getElementById("auth-submit-btn").textContent = mode === "login" ? "دخول" : "تسجيل";
+    document.getElementById("auth-error").style.display = "none";
+    document.getElementById("auth-input-username").value = "";
+    document.getElementById("auth-input-password").value = "";
+}
+
+function closeAuthModal() {
+    document.getElementById("auth-modal").classList.add("hidden");
+}
+
+function handleAuth(event) {
+    event.preventDefault();
+    const username = document.getElementById("auth-input-username").value.trim();
+    const password = document.getElementById("auth-input-password").value.trim();
+    const errorEl = document.getElementById("auth-error");
+    const endpoint = authMode === "login" ? "/api/login" : "/api/register";
+
+    fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            closeAuthModal();
+            document.getElementById("auth-logged-out").classList.add("hidden");
+            document.getElementById("auth-logged-in").classList.remove("hidden");
+            document.getElementById("auth-username").textContent = data.user;
+        } else {
+            errorEl.textContent = data.error || "حدث خطأ";
+            errorEl.style.display = "block";
+        }
+    })
+    .catch(() => {
+        errorEl.textContent = "تعذر الاتصال بالخادم";
+        errorEl.style.display = "block";
+    });
+    return false;
+}
+
+function logoutUser() {
+    fetch("/api/logout", { method: "POST" })
+        .then(r => r.json())
+        .then(() => {
+            document.getElementById("auth-logged-out").classList.remove("hidden");
+            document.getElementById("auth-logged-in").classList.add("hidden");
+        })
+        .catch(() => {});
+}
+
+checkAuth();
+
 function saveApiKey() {
     const key = apiInput.value.trim();
     if (!key) { alert("اكتب مفتاح API أول"); return; }
@@ -826,51 +899,6 @@ coachInput.addEventListener("keydown", function (e) {
     if (e.key === "Enter") handleCoachSend();
 });
 
-// ═══════════════════════════════════════════════
-// NEWS — Fetch Rocket League news from Steam RSS
-// ═══════════════════════════════════════════════
 
-const newsItems = document.getElementById("news-items");
-const newsLoading = document.getElementById("news-loading");
-const newsError = document.getElementById("news-error");
-const newsHeader = document.getElementById("news-header");
-const newsToggle = document.getElementById("news-toggle");
-const newsContent = document.getElementById("news-content");
-let newsCollapsed = false;
-
-function fetchNews() {
-    fetch("/api/news")
-        .then(r => r.json())
-        .then(data => {
-            newsLoading.style.display = "none";
-            if (!data.success || !data.items.length) {
-                newsError.style.display = "block";
-                newsError.textContent = "ما فيه أخبار حالياً";
-                return;
-            }
-            newsItems.style.display = "flex";
-            newsItems.innerHTML = data.items.map(item => `
-                <a class="news-item" href="${item.link}" target="_blank" rel="noopener">
-                    <div class="news-item-body">
-                        <div class="news-item-title">${item.title}</div>
-                        <div class="news-item-desc">${item.description}</div>
-                        <div class="news-item-date">${item.published}</div>
-                    </div>
-                </a>
-            `).join("");
-        })
-        .catch(() => {
-            newsLoading.style.display = "none";
-            newsError.style.display = "block";
-        });
-}
-
-newsHeader.addEventListener("click", () => {
-    newsCollapsed = !newsCollapsed;
-    newsContent.style.display = newsCollapsed ? "none" : "";
-    newsToggle.textContent = newsCollapsed ? "▶" : "▼";
-});
-
-fetchNews();
 
 

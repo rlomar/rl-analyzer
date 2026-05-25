@@ -1,15 +1,16 @@
 import os, json, tempfile, time
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, session
 from flask_cors import CORS
 from analyzer import RocketLeagueAnalyzer
-from database import init_db, save_replay, get_player_history, get_player_names
+from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user
 from trends import analyze_trends, generate_scrim_team_analysis
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
-CORS(app)
+app.secret_key = os.urandom(24).hex()
+CORS(app, supports_credentials=True)
 
 UPLOAD_FOLDER = tempfile.gettempdir()
 BALLCHASING_API = "https://ballchasing.com/api"
@@ -37,6 +38,39 @@ def detect_game_mode(data):
 MODE_LABELS = {"1v1": "فردي 1v1", "2v2": "زوجي 2v2", "3v3": "فريق 3v3"}
 
 init_db()
+
+@app.route("/api/register", methods=["POST"])
+def api_register():
+    data = request.get_json()
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+    if len(username) < 3: return jsonify({"error": "اسم المستخدم ٣ أحرف على الأقل"}), 400
+    if len(password) < 4: return jsonify({"error": "كلمة المرور ٤ أحرف على الأقل"}), 400
+    if create_user(username, password):
+        session["user"] = username
+        return jsonify({"success": True, "user": username})
+    return jsonify({"error": "اسم المستخدم موجود مسبقاً"}), 409
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.get_json()
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+    if verify_user(username, password):
+        session["user"] = username
+        return jsonify({"success": True, "user": username})
+    return jsonify({"error": "اسم المستخدم أو كلمة المرور خطأ"}), 401
+
+@app.route("/api/logout", methods=["POST"])
+def api_logout():
+    session.pop("user", None)
+    return jsonify({"success": True})
+
+@app.route("/api/me", methods=["GET"])
+def api_me():
+    if "user" in session:
+        return jsonify({"user": session["user"]})
+    return jsonify({"user": None})
 
 @app.route("/api/set-key", methods=["POST"])
 def set_api_key():
@@ -146,43 +180,6 @@ def analyze_replay():
     finally:
         if os.path.exists(filepath):
             os.remove(filepath)
-
-import feedparser
-import re
-from functools import lru_cache
-
-NEWS_FEED_URL = "https://store.steampowered.com/feeds/news/app/252950/?cc=US&l=en"
-
-def translate_ar(text):
-    try:
-        from deep_translator import GoogleTranslator
-        result = GoogleTranslator(source="en", target="ar").translate(text[:5000])
-        return result if result else text
-    except Exception:
-        return text
-
-@lru_cache(maxsize=128)
-def cached_translate(text):
-    return translate_ar(text)
-
-@app.route("/api/news", methods=["GET"])
-def api_news():
-    try:
-        feed = feedparser.parse(NEWS_FEED_URL)
-        items = []
-        for entry in feed.entries[:10]:
-            desc = entry.get("summary", "")
-            clean_desc = re.sub(r"<[^>]+>", "", desc)[:500]
-            title = entry.get("title", "")
-            items.append({
-                "title": cached_translate(title),
-                "link": entry.get("link", ""),
-                "published": entry.get("published", ""),
-                "description": cached_translate(clean_desc),
-            })
-        return jsonify({"success": True, "items": items})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/api/players", methods=["GET"])
 def api_players():
