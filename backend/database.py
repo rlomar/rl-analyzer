@@ -188,6 +188,14 @@ def init_db():
             show_team_analysis INTEGER DEFAULT 1,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS page_visits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            path TEXT,
+            user_id INTEGER,
+            ip TEXT,
+            user_agent TEXT,
+            visited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE INDEX IF NOT EXISTS idx_player_stats_name ON player_stats(player_name);
         CREATE INDEX IF NOT EXISTS idx_player_stats_replay ON player_stats(replay_id);
         CREATE INDEX IF NOT EXISTS idx_replays_mode ON replays(game_mode);
@@ -540,3 +548,62 @@ def get_player_full_profile(player_name):
     games = [dict(r) for r in cursor.fetchall()]
     conn.close()
     return stats, games
+
+def record_visit(path, user_id=None, ip=None, user_agent=None):
+    conn = get_db()
+    conn.execute("INSERT INTO page_visits (path, user_id, ip, user_agent) VALUES (?, ?, ?, ?)",
+                 (path, user_id, ip, user_agent))
+    conn.commit()
+    conn.close()
+
+def get_admin_stats():
+    conn = get_db()
+    cursor = conn.cursor()
+    # Total users
+    cursor.execute("SELECT COUNT(*) AS total FROM users")
+    total_users = cursor.fetchone()["total"]
+    # Users today
+    cursor.execute("SELECT COUNT(*) AS total FROM users WHERE date(created_at) = date('now')")
+    users_today = cursor.fetchone()["total"]
+    # Total visits
+    cursor.execute("SELECT COUNT(*) AS total FROM page_visits")
+    total_visits = cursor.fetchone()["total"]
+    # Visits today
+    cursor.execute("SELECT COUNT(*) AS total FROM page_visits WHERE date(visited_at) = date('now')")
+    visits_today = cursor.fetchone()["total"]
+    # Unique visitors today
+    cursor.execute("SELECT COUNT(DISTINCT COALESCE(user_id, ip)) AS total FROM page_visits WHERE date(visited_at) = date('now')")
+    unique_today = cursor.fetchone()["total"]
+    # Visits per day (last 14 days)
+    cursor.execute("""
+        SELECT date(visited_at) AS day, COUNT(*) AS count,
+               COUNT(DISTINCT COALESCE(user_id, ip)) AS uniques
+        FROM page_visits
+        WHERE visited_at >= date('now', '-14 days')
+        GROUP BY date(visited_at)
+        ORDER BY day DESC
+    """)
+    visits_per_day = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return {
+        "total_users": total_users,
+        "users_today": users_today,
+        "total_visits": total_visits,
+        "visits_today": visits_today,
+        "unique_today": unique_today,
+        "visits_per_day": visits_per_day,
+    }
+
+def get_admin_users():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT u.id, u.username, u.display_name, u.hash_tag, u.created_at,
+               (SELECT COUNT(*) FROM replays WHERE user_id = u.id) AS replay_count,
+               (SELECT MAX(visited_at) FROM page_visits WHERE user_id = u.id) AS last_visit
+        FROM users u
+        ORDER BY u.created_at DESC
+    """)
+    rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return rows

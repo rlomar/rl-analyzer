@@ -3,7 +3,7 @@ from datetime import timedelta
 from flask import Flask, request, jsonify, send_from_directory, session, send_file
 from flask_cors import CORS
 from analyzer import RocketLeagueAnalyzer
-from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name
+from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, get_admin_stats, get_admin_users
 from urllib.parse import urlencode
 from trends import analyze_trends, generate_scrim_team_analysis
 
@@ -26,6 +26,9 @@ else:
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 CORS(app, supports_credentials=True)
+
+# Admin config — set env var ADMIN_USERNAME to your username to access admin panel
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "")
 
 UPLOAD_FOLDER = tempfile.gettempdir()
 os.makedirs(REPLAY_STORAGE, exist_ok=True)
@@ -82,6 +85,18 @@ def get_db_user_id(username):
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
+
+# ── VISIT TRACKING ─────────────────────────
+@app.before_request
+def track_visit():
+    if request.endpoint in ("index", "static_files"):
+        uid = session.get("user_id")
+        record_visit(
+            path=request.path,
+            user_id=uid,
+            ip=request.remote_addr,
+            user_agent=request.headers.get("User-Agent", "")[:200],
+        )
 
 # ── STEAM LOGIN ────────────────────────────
 @app.route("/api/auth/steam")
@@ -603,6 +618,26 @@ def index():
 @app.route("/<path:path>")
 def static_files(path):
     return send_from_directory(FRONTEND_DIR, path)
+
+# ── ADMIN DASHBOARD ────────────────────────
+def _is_admin():
+    return bool(ADMIN_USERNAME) and session.get("user") == ADMIN_USERNAME
+
+@app.route("/api/admin/check", methods=["GET"])
+def api_admin_check():
+    return jsonify({"is_admin": _is_admin()})
+
+@app.route("/api/admin/stats", methods=["GET"])
+def api_admin_stats():
+    if not _is_admin():
+        return jsonify({"error": "غير مصرح"}), 403
+    return jsonify(get_admin_stats())
+
+@app.route("/api/admin/users", methods=["GET"])
+def api_admin_users():
+    if not _is_admin():
+        return jsonify({"error": "غير مصرح"}), 403
+    return jsonify({"users": get_admin_users()})
 
 if __name__ == "__main__":
     print("=" * 50)

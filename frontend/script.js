@@ -37,6 +37,11 @@ function checkAuth() {
             document.getElementById("auth-logged-in").classList.remove("hidden");
             document.getElementById("auth-username").textContent = getProviderIcon(data.user) + " " + (data.tagged_name || data.display_name || data.user);
         }
+        // Check if this user is admin
+        fetch("/api/admin/check").then(r=>r.json()).then(ad=>{
+            const btn=document.getElementById("admin-menu-btn");
+            if(ad.is_admin) btn.classList.remove("hidden"); else btn.classList.add("hidden");
+        }).catch(()=>{});
     }).catch(()=>{});
 }
 
@@ -282,3 +287,48 @@ handleFile=function(file){
         else showError(data.error||"خطأ غير معروف");
     }).catch(()=>{uploadStatus.classList.add("hidden");dropZone.classList.remove("hidden");showError("تعذر الاتصال. شغل الباك اند.");});
 };
+
+// ═══ ADMIN DASHBOARD ════════════════════
+function showAdminPanel(){
+    const m=document.getElementById("admin-modal"),c=document.getElementById("admin-content");
+    m.classList.remove("hidden");c.innerHTML="<p style='color:#8892b0;'>جاري التحميل...</p>";
+    document.getElementById("user-menu").classList.add("hidden");
+    Promise.all([
+        fetch("/api/admin/stats").then(r=>r.json()),
+        fetch("/api/admin/users").then(r=>r.json())
+    ]).then(([statsData,usersData])=>{
+        if(statsData.error){c.innerHTML=`<p style='color:#ff1744;'>${statsData.error}</p>`;return;}
+        const s=statsData,users=usersData.users||[];
+        let html=`
+            <h2 style="color:#fff;margin-bottom:20px;">🛡️ لوحة التحكم</h2>
+            <div class="admin-stats-grid">
+                <div class="admin-stat"><span class="admin-stat-value">${s.total_users}</span><span class="admin-stat-label">إجمالي المستخدمين</span></div>
+                <div class="admin-stat"><span class="admin-stat-value">${s.users_today}</span><span class="admin-stat-label">جدد اليوم</span></div>
+                <div class="admin-stat"><span class="admin-stat-value">${s.total_visits}</span><span class="admin-stat-label">إجمالي الزيارات</span></div>
+                <div class="admin-stat"><span class="admin-stat-value">${s.visits_today}</span><span class="admin-stat-label">زيارات اليوم</span></div>
+                <div class="admin-stat"><span class="admin-stat-value">${s.unique_today}</span><span class="admin-stat-label">مميزون اليوم</span></div>
+            </div>`;
+        // Visits chart (simple bars)
+        if(s.visits_per_day&&s.visits_per_day.length){
+            const maxVal=Math.max(...s.visits_per_day.map(v=>v.count),1);
+            html+=`<h4 style="color:#fff;margin:20px 0 10px;">📊 الزيارات آخر ١٤ يوم</h4><div class="admin-chart">`;
+            s.visits_per_day.slice().reverse().forEach(v=>{
+                const pct=Math.round((v.count/maxVal)*100);
+                html+=`<div class="admin-chart-bar-wrap"><div class="admin-chart-bar" style="height:${pct}%"><span class="admin-chart-val">${v.count}</span></div><span class="admin-chart-label">${v.day.slice(5)}</span></div>`;
+            });
+            html+=`</div>`;
+        }
+        // Users table
+        html+=`<h4 style="color:#fff;margin:20px 0 10px;">👥 المستخدمين (${users.length})</h4><div class="table-wrap" style="max-height:400px;overflow-y:auto;"><table class="history-table"><thead><tr><th>#</th><th>الاسم</th><th>اليوزر</th><th>tag</th><th>ريبلايات</th><th>التسجيل</th><th>آخر زيارة</th></tr></thead><tbody>`;
+        users.forEach((u,i)=>{
+            const tag=u.hash_tag||"";
+            const display=u.display_name||u.username||"-";
+            const lastVisit=u.last_visit?u.last_visit.slice(0,10):"-";
+            const joined=u.created_at?u.created_at.slice(0,10):"-";
+            html+=`<tr><td>${i+1}</td><td>${display}</td><td style="font-size:12px;color:#5a6a8a">${u.username||"-"}</td><td style="font-size:12px;color:#5a6a8a">${tag?"#"+tag:""}</td><td>${u.replay_count||0}</td><td style="font-size:12px;color:#5a6a8a">${joined}</td><td style="font-size:12px;color:#5a6a8a">${lastVisit}</td></tr>`;
+        });
+        html+=`</tbody></table></div>`;
+        c.innerHTML=html;
+    }).catch(()=>{c.innerHTML="<p style='color:#ff1744;'>تعذر تحميل لوحة التحكم</p>";});
+}
+function closeAdminPanel(){document.getElementById("admin-modal").classList.add("hidden");}
