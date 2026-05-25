@@ -48,6 +48,7 @@ function checkAuth() {
                 document.getElementById("uph-rank").textContent=rank;
                 document.getElementById("uph-name").textContent=tag;
                 document.getElementById("uph-sub").textContent=u.username||"مستخدم مسجل";
+const profileUrl=`${window.location.origin}/p/${encodeURIComponent(u.username)}`;
 const onlineDot=document.querySelector("#user-profile-header .dot");
 if(onlineDot) onlineDot.style.background="#00c853";
                 document.getElementById("uph-level").textContent="Level "+(Math.floor(ttl/5)+1);
@@ -65,6 +66,7 @@ if(onlineDot) onlineDot.style.background="#00c853";
                 document.getElementById("stat-mvp").textContent=Math.round((s.total_replays||0)*0.2);
                 document.getElementById("stats-grid").classList.remove("hidden");
 document.getElementById("profile-tabs").classList.remove("hidden");
+document.getElementById("edit-profile-btn").classList.remove("hidden");
 // Fetch achievements
 fetch("/api/user/achievements").then(r=>r.json()).then(ad=>{
     const achs=ad.achievements||[];
@@ -78,6 +80,7 @@ fetch("/api/user/achievements").then(r=>r.json()).then(ad=>{
             document.getElementById("stats-grid").classList.add("hidden");
 document.getElementById("profile-tabs").classList.add("hidden");
 document.getElementById("achievements-grid").classList.add("hidden");
+document.getElementById("edit-profile-btn").classList.add("hidden");
         }
         // Check if this user is admin
         fetch("/api/admin/check").then(r=>r.json()).then(ad=>{
@@ -103,6 +106,24 @@ function logoutUser() {
     }).catch(()=>{});
 }
 checkAuth();
+
+// ── PROFILE URL ROUTING ────────────────
+(function(){
+    const path=window.location.pathname;
+    const m=path.match(/^\/(p|u)\/(.+)/);
+    if(m){
+        const profileName=decodeURIComponent(m[2]);
+        setTimeout(()=>showPlayerProfile(profileName),600);
+    }
+})();
+
+function copyProfileLink(){
+    fetch("/api/me").then(r=>r.json()).then(d=>{
+        if(!d.user) return alert("سجل الدخول أولاً");
+        const url=`${window.location.origin}/p/${encodeURIComponent(d.user)}`;
+        navigator.clipboard.writeText(url).then(()=>alert("✅ تم نسخ الرابط: "+url)).catch(()=>alert("❌ فشل النسخ"));
+    });
+}
 
 function saveApiKey() {
     const key = apiInput.value.trim();
@@ -196,12 +217,14 @@ function showPlayerProfile(pn){
             fetch(`/api/user-search?q=${encodeURIComponent(pn)}`).then(r=>r.json()).then(ud=>{
                 const u=ud.user;
                 if(u){
+                    const link=`${window.location.origin}/p/${encodeURIComponent(u.username)}`;
                     let html=`
                         <div class="profile-header-card">
                             <div class="profile-avatar">${u.display_name.charAt(0).toUpperCase()}</div>
                             <div class="profile-info">
                                 <h3 style="color:#fff;font-size:20px;margin-bottom:4px;">${u.tagged_name||u.display_name}</h3>
                                 <p style="color:#8892b0;font-size:13px;">👤 مستخدم مسجل — لا توجد ريبلايات بعد</p>
+                                <button class="btn btn-sm" style="margin-top:8px;font-size:12px;padding:4px 12px;" onclick="navigator.clipboard.writeText('${link}');alert('✅ تم نسخ الرابط')">🔗 نسخ الرابط</button>
                             </div>
                         </div>`;
                     content.innerHTML=html;
@@ -214,12 +237,14 @@ function showPlayerProfile(pn){
         const s=profile.stats||{},games=profile.games||[];
         fetch(`/api/players/${encodeURIComponent(pn)}/replays`).then(r=>r.json()).then(replayData=>{
             const replays=replayData.replays||[];
+            const plink=`${window.location.origin}/p/${encodeURIComponent(pn)}`;
             let html=`
                 <div class="profile-header-card">
                     <div class="profile-avatar">${pn.charAt(0).toUpperCase()}</div>
                     <div class="profile-info">
                         <h3 style="color:#fff;font-size:20px;margin-bottom:4px;">${pn}</h3>
                         <p style="color:#8892b0;font-size:13px;">${s.total_games||0} مباريات إجمالي</p>
+                        <button class="btn btn-sm" style="margin-top:8px;font-size:12px;padding:4px 12px;" onclick="navigator.clipboard.writeText('${plink}');alert('✅ تم نسخ الرابط')">🔗 نسخ الرابط</button>
                     </div>
                 </div>
                 <div class="profile-stats-grid">
@@ -335,6 +360,32 @@ function showProfile(){
     }).catch(()=>{c.innerHTML="<p style='color:#ff1744;'>تعذر تحميل الملف الشخصي</p>";});
 }
 function closeProfile(){document.getElementById("profile-modal").classList.add("hidden");}
+function showEditProfile(){
+    const m=document.getElementById("edit-profile-modal");
+    m.classList.remove("hidden");
+    fetch("/api/user/profile").then(r=>r.json()).then(d=>{
+        if(d.error) return;
+        const u=d.user||{};
+        document.getElementById("edit-name").value=u.display_name||"";
+        document.getElementById("edit-country").value=u.country||"";
+        document.getElementById("edit-platform").value=u.primary_platform||"";
+        document.getElementById("edit-bio").value=u.bio||"";
+    }).catch(()=>{});
+}
+function closeEditProfile(){document.getElementById("edit-profile-modal").classList.add("hidden");}
+function saveEditProfile(){
+    const data={
+        display_name: document.getElementById("edit-name").value.trim(),
+        country: document.getElementById("edit-country").value.trim(),
+        primary_platform: document.getElementById("edit-platform").value,
+        bio: document.getElementById("edit-bio").value.trim(),
+    };
+    fetch("/api/user/update-profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)})
+    .then(r=>r.json()).then(d=>{
+        if(d.success){alert("✅ تم الحفظ");closeEditProfile();checkAuth();}
+        else alert(d.error||"خطأ");
+    }).catch(()=>alert("فشل الحفظ"));
+}
 function savePlayerName(){const n=document.getElementById("player-name-setting").value.trim();if(!n){alert("اكتب اسمك أول");return;}fetch("/api/user/update-profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({display_name:n})}).then(r=>r.json()).then(d=>{if(d.success){alert("✅ تم الحفظ");checkAuth();}else alert(d.error||"خطأ");}).catch(()=>alert("فشل الحفظ"));}
 
 // ═══ SETTINGS ══════════════════════════════

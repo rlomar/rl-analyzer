@@ -219,6 +219,15 @@ def init_db():
         conn.execute("CREATE TABLE IF NOT EXISTS user_settings (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE REFERENCES users(id), preferred_mode TEXT DEFAULT '3v3', auto_link_player INTEGER DEFAULT 0, show_team_analysis INTEGER DEFAULT 1, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
     except sqlite3.OperationalError:
         pass
+    # Migrations for profile fields
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN country TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN primary_platform TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
     init_achievements()
@@ -457,12 +466,14 @@ def get_user_recent_replays(user_id, limit=10):
     conn.close()
     return rows
 
-def update_user_profile(user_id, display_name=None, avatar=None, bio=None):
+def update_user_profile(user_id, display_name=None, avatar=None, bio=None, country=None, primary_platform=None):
     conn = get_db()
     updates = {}
     if display_name is not None: updates["display_name"] = display_name
     if avatar is not None: updates["avatar"] = avatar
     if bio is not None: updates["bio"] = bio
+    if country is not None: updates["country"] = country
+    if primary_platform is not None: updates["primary_platform"] = primary_platform
     if updates:
         sets = ", ".join(f"{k} = ?" for k in updates)
         vals = list(updates.values()) + [user_id]

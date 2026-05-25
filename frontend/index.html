@@ -123,6 +123,9 @@
             </div>
         </div>
 
+        <button class="btn btn-sm" id="edit-profile-btn" onclick="showEditProfile()" style="margin-bottom:20px;">⚙️ تعديل البروفايل</button>
+        <button class="btn btn-sm" id="copy-profile-link" onclick="copyProfileLink()" style="margin-bottom:20px;margin-right:8px;">🔗 نسخ الرابط</button>
+
         <div class="profile-tabs hidden" id="profile-tabs">
             <button class="tab active">Overview</button>
             <button class="tab">Matches</button>
@@ -170,6 +173,28 @@
                     الإعدادات
                 </h3>
                 <div id="settings-content"><p style="color:#8892b0;">جاري التحميل...</p></div>
+            </div>
+        </div>
+
+        <!-- Edit Profile Modal -->
+        <div id="edit-profile-modal" class="modal hidden">
+            <div class="modal-content" style="max-width:450px;">
+                <span class="modal-close" onclick="closeEditProfile()">✕</span>
+                <h3 style="color:#fff;margin-bottom:20px;">⚙️ تعديل البروفايل</h3>
+                <div style="display:flex;flex-direction:column;gap:14px;">
+                    <input type="text" id="edit-name" placeholder="الاسم" style="padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;direction:rtl;">
+                    <input type="text" id="edit-country" placeholder="الدولة (مثال: السعودية)" style="padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;direction:rtl;">
+                    <select id="edit-platform" style="padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;direction:rtl;">
+                        <option value="">— المنصة الرئيسية —</option>
+                        <option value="Steam">Steam 🎮</option>
+                        <option value="Epic Games">Epic Games ⭐</option>
+                        <option value="PlayStation">PlayStation 🎯</option>
+                        <option value="Xbox">Xbox 🎮</option>
+                        <option value="Nintendo">Nintendo 🕹️</option>
+                    </select>
+                    <textarea id="edit-bio" placeholder="عن نفسك" rows="3" style="padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;direction:rtl;resize:vertical;"></textarea>
+                    <button class="btn" onclick="saveEditProfile()">💾 حفظ</button>
+                </div>
             </div>
         </div>
 

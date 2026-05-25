@@ -3,7 +3,7 @@ from datetime import timedelta
 from flask import Flask, request, jsonify, send_from_directory, session, send_file
 from flask_cors import CORS
 from analyzer import RocketLeagueAnalyzer
-from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, get_admin_stats, get_admin_users, check_and_unlock_achievements, get_user_achievements
+from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, get_admin_stats, get_admin_users, check_and_unlock_achievements, get_user_achievements, get_db
 from urllib.parse import urlencode
 from trends import analyze_trends, generate_scrim_team_analysis
 
@@ -12,16 +12,18 @@ FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 REPLAY_STORAGE = os.path.join(BASE_DIR, "backend", "replays")
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
-# Persistent secret key — generated once, saved to file
-SECRET_KEY_FILE = os.path.join(BASE_DIR, "backend", ".secret_key")
-if os.path.exists(SECRET_KEY_FILE):
-    with open(SECRET_KEY_FILE, "r") as f:
-        app.secret_key = f.read().strip()
-else:
-    app.secret_key = os.urandom(32).hex()
-    os.makedirs(os.path.dirname(SECRET_KEY_FILE), exist_ok=True)
-    with open(SECRET_KEY_FILE, "w") as f:
-        f.write(app.secret_key)
+# Persistent secret key — env var takes precedence, otherwise file, otherwise generate
+app.secret_key = os.environ.get("SESSION_SECRET")
+if not app.secret_key:
+    SECRET_KEY_FILE = os.path.join(BASE_DIR, "backend", ".secret_key")
+    if os.path.exists(SECRET_KEY_FILE):
+        with open(SECRET_KEY_FILE, "r") as f:
+            app.secret_key = f.read().strip()
+    else:
+        app.secret_key = os.urandom(32).hex()
+        os.makedirs(os.path.dirname(SECRET_KEY_FILE), exist_ok=True)
+        with open(SECRET_KEY_FILE, "w") as f:
+            f.write(app.secret_key)
 # Keep sessions alive across browser restarts
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -91,7 +93,7 @@ def get_db_user_id(username):
     from database import get_db
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, username, display_name, hash_tag FROM users WHERE username = ?", (username,))
+    cursor.execute("SELECT id, username, display_name, hash_tag, avatar, bio, country, primary_platform FROM users WHERE username = ?", (username,))
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
@@ -302,6 +304,10 @@ def api_user_profile():
             "display_name": display,
             "hash_tag": tag,
             "tagged_name": f"{display}#{tag}" if display and tag else display,
+            "avatar": info.get("avatar") if info else None,
+            "bio": info.get("bio") if info else None,
+            "country": info.get("country") if info else None,
+            "primary_platform": info.get("primary_platform") if info else None,
         },
         "stats": stats,
         "settings": settings,
@@ -335,7 +341,15 @@ def api_update_profile():
     data = request.get_json()
     display_name = data.get("display_name", "").strip()
     bio = data.get("bio", "").strip()
-    update_user_profile(session["user_id"], display_name=display_name or None, bio=bio or None)
+    country = data.get("country", "").strip()
+    primary_platform = data.get("primary_platform", "").strip()
+    avatar = data.get("avatar", "").strip()
+    update_user_profile(session["user_id"],
+        display_name=display_name or None,
+        bio=bio or None,
+        country=country or None,
+        primary_platform=primary_platform or None,
+        avatar=avatar or None)
     return jsonify({"success": True})
 
 # ── LOGOUT ──────────────────────────────────
@@ -586,6 +600,46 @@ def api_player_profile(player_name):
     if not stats or not stats.get("total_games"):
         return jsonify({"error": "لا توجد بيانات لهذا اللاعب"}), 404
     return jsonify({"stats": stats, "games": games})
+
+@app.route("/api/profile/<name>", methods=["GET"])
+def api_unified_profile(name):
+    """Return profile data for a player or registered user by name."""
+    # Try player stats first
+    stats, games = get_player_full_profile(name)
+    if stats and stats.get("total_games"):
+        return jsonify({
+            "source": "player",
+            "player_name": name,
+            "stats": stats,
+            "games": games,
+        })
+    # Try registered user
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, display_name, hash_tag, avatar, bio, country, primary_platform FROM users WHERE display_name = ? COLLATE NOCASE OR username = ? COLLATE NOCASE LIMIT 1", (name, name))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        r = dict(row)
+        tag = r.get("hash_tag", "")
+        display = r.get("display_name") or r.get("username", "")
+        return jsonify({
+            "source": "user",
+            "player_name": f"{display}#{tag}" if tag else display,
+            "username": r["username"],
+            "display_name": display,
+            "hash_tag": tag,
+            "avatar": r.get("avatar"),
+            "bio": r.get("bio"),
+            "country": r.get("country"),
+            "primary_platform": r.get("primary_platform"),
+        })
+    return jsonify({"error": "لا توجد بيانات"}), 404
+
+@app.route("/p/<name>")
+@app.route("/u/<name>")
+def profile_page(name):
+    return send_from_directory(FRONTEND_DIR, "index.html")
 
 @app.route("/api/players/<player_name>/replays", methods=["GET"])
 def api_player_replays(player_name):
