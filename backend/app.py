@@ -46,7 +46,7 @@ def get_db_user_id(username):
     from database import get_db
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, display_name FROM users WHERE username = ?", (username,))
+    cursor.execute("SELECT id, username, display_name FROM users WHERE username = ?", (username,))
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
