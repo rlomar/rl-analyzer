@@ -3,7 +3,7 @@ from datetime import timedelta
 from flask import Flask, request, jsonify, send_from_directory, session, send_file
 from flask_cors import CORS
 from analyzer import RocketLeagueAnalyzer
-from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, get_admin_stats, get_admin_users, check_and_unlock_achievements, get_user_achievements, get_db
+from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, get_admin_stats, get_admin_users, check_and_unlock_achievements, get_user_achievements, get_db, award_xp
 from urllib.parse import urlencode
 from trends import analyze_trends, generate_scrim_team_analysis
 
@@ -93,7 +93,7 @@ def get_db_user_id(username):
     from database import get_db
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, username, display_name, hash_tag, avatar, bio, country, primary_platform FROM users WHERE username = ?", (username,))
+    cursor.execute("SELECT id, username, display_name, hash_tag, avatar, bio, country, primary_platform, xp FROM users WHERE username = ?", (username,))
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
@@ -308,6 +308,7 @@ def api_user_profile():
             "bio": info.get("bio") if info else None,
             "country": info.get("country") if info else None,
             "primary_platform": info.get("primary_platform") if info else None,
+            "xp": info.get("xp") if info else 0,
         },
         "stats": stats,
         "settings": settings,
@@ -508,6 +509,14 @@ def analyze_replay():
         user_id = session.get("user_id")
         user_player_name = request.form.get("player_name") or None
         save_replay(data, game_mode, results, user_id=user_id, user_player_name=user_player_name, file_path=replay_filepath)
+
+        # Award XP
+        if user_id:
+            up = next((p for p in results if p["name"] == (user_player_name or "")), None)
+            if up:
+                s = up["stats"]
+                won = (up["team_key"] == "blue" and game_info["blue_goals"] > game_info["orange_goals"]) or (up["team_key"] == "orange" and game_info["orange_goals"] > game_info["blue_goals"])
+                award_xp(user_id, goals=s.get("goals",0), assists=s.get("assists",0), saves=s.get("saves",0), score=s.get("score",0), won=won)
 
         # Load trends for each player
         trends_data = {}

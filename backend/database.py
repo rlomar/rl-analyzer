@@ -267,6 +267,11 @@ def init_db():
         _c(conn, "CREATE UNIQUE INDEX IF NOT EXISTS idx_achievements_unique ON achievements(user_id, achievement_id)")
     except:
         pass
+    # XP column migration
+    try:
+        _c(conn, "ALTER TABLE users ADD COLUMN xp INTEGER DEFAULT 0")
+    except:
+        pass
     conn.commit()
     conn.close()
 
@@ -436,6 +441,24 @@ def update_user_settings(user_id, settings):
         _c(conn, f"UPDATE user_settings SET {ph}, updated_at = CURRENT_TIMESTAMP WHERE user_id = %s", vals)
         conn.commit()
     conn.close()
+
+def award_xp(user_id, goals=0, assists=0, saves=0, score=0, won=False):
+    xp = 100  # base
+    xp += goals * 25
+    xp += assists * 15
+    xp += saves * 10
+    if score > 500: xp += 30
+    if won: xp += 50
+    conn = get_db()
+    _c(conn, "UPDATE users SET xp = COALESCE(xp, 0) + %s WHERE id = %s", (xp, user_id))
+    conn.commit()
+    # Fetch new xp
+    row = _c(conn, "SELECT xp FROM users WHERE id = %s", (user_id,)).fetchone()
+    conn.close()
+    total_xp = row["xp"] if row else 0
+    level = total_xp // 1000 + 1
+    progress = total_xp % 1000
+    return {"xp_awarded": xp, "total_xp": total_xp, "level": level, "progress": progress}
 
 def get_user_aggregated_stats(user_id):
     conn = get_db()

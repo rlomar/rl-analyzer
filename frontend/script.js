@@ -42,7 +42,9 @@ function checkAuth() {
                 if(d.error) return;
                 const u=d.user||{}, s=d.stats||{}, ttl=s.total_replays||0;
                 const tag=u.tagged_name||u.display_name||u.username||"مستخدم";
-                const xpPct=Math.min(100,Math.round(((ttl%10)/10)*100));
+                const totalXp=u.xp||0;
+                const level=Math.floor(totalXp/1000)+1;
+                const xpPct=Math.min(100,Math.round(((totalXp%1000)/1000)*100));
                 const rank=ttl>=100?"SSL":ttl>=50?"GC":ttl>=30?"Champ":ttl>=20?"Diamond":ttl>=10?"Plat":ttl>=5?"Gold":ttl>=2?"Silver":"Bronze";
                 document.getElementById("uph-avatar").textContent=tag.charAt(0).toUpperCase();
                 document.getElementById("uph-rank").textContent=rank;
@@ -58,9 +60,9 @@ const profileUrl=`${window.location.origin}/p/${encodeURIComponent(u.username)}`
                 av.style.setProperty("--avatar-glow-soft",c+"22");
 const onlineDot=document.querySelector("#user-profile-header .dot");
 if(onlineDot) onlineDot.style.background="#00c853";
-                document.getElementById("uph-level").textContent="Level "+(Math.floor(ttl/5)+1);
+                document.getElementById("uph-level").textContent="Level "+level;
                 document.getElementById("uph-xp").style.width=xpPct+"%";
-                document.getElementById("uph-xp-text").textContent=(ttl%10)+" / 10 XP";
+                document.getElementById("uph-xp-text").textContent=(totalXp%1000)+" / 1000 XP";
                 // Banner color by rank
                 const banner=document.querySelector("#user-profile-header .profile-banner");
                 const colors={Bronze:"linear-gradient(135deg,#8d6e63,#6d4c41,#4e342e)",Silver:"linear-gradient(135deg,#bdbdbd,#9e9e9e,#757575)",Gold:"linear-gradient(135deg,#ffd54f,#ffb300,#ff8f00)",Plat:"linear-gradient(135deg,#80cbc4,#26a69a,#00897b)",Diamond:"linear-gradient(135deg,#64b5f6,#1e88e5,#1565c0)",Champ:"linear-gradient(135deg,#ce93d8,#8e24aa,#6a1b9a)",GC:"linear-gradient(135deg,#ef5350,#d32f2f,#b71c1c)",SSL:"linear-gradient(135deg,#b388ff,#7c4dff,#651fff)"};
