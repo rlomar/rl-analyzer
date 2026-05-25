@@ -18,6 +18,18 @@
         </header>
 
         <main>
+            <section id="news-section" class="card">
+                <div id="news-header" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+                    <h2>📰 أخبار Rocket League</h2>
+                    <span id="news-toggle" style="font-size:20px;color:#8892b0;">▼</span>
+                </div>
+                <div id="news-content">
+                    <div id="news-loading" style="text-align:center;padding:20px;color:#8892b0;">جاري تحميل الأخبار...</div>
+                    <div id="news-items" style="display:none;flex-direction:column;gap:12px;margin-top:15px;"></div>
+                    <div id="news-error" style="display:none;text-align:center;padding:20px;color:#ffab00;">تعذر تحميل الأخبار</div>
+                </div>
+            </section>
+
             <section id="api-section" class="card">
                 <h2>🔑 مفتاح API</h2>
                 <p style="color:#8892b0;font-size:14px;margin-bottom:12px;">احصل عليه مجاناً من ballchasing.com/account</p>
