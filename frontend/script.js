@@ -48,6 +48,8 @@ function checkAuth() {
                 document.getElementById("uph-rank").textContent=rank;
                 document.getElementById("uph-name").textContent=tag;
                 document.getElementById("uph-sub").textContent=u.username||"مستخدم مسجل";
+const onlineDot=document.querySelector("#user-profile-header .dot");
+if(onlineDot) onlineDot.style.background="#00c853";
                 document.getElementById("uph-level").textContent="Level "+(Math.floor(ttl/5)+1);
                 document.getElementById("uph-xp").style.width=xpPct+"%";
                 document.getElementById("uph-xp-text").textContent=(ttl%10)+" / 10 XP";

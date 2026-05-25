@@ -525,6 +525,22 @@ h1 span {
     font-size: 22px;
     margin-bottom: 2px;
 }
+.online-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #00c853;
+    margin-bottom: 6px;
+}
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #00c853;
+    animation: pulse-dot 2s infinite;
+}
+
 .profile-sub {
     color: #8892b0;
     font-size: 13px;
