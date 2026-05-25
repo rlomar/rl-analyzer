@@ -32,10 +32,29 @@ function getProviderIcon(username) {
 }
 function checkAuth() {
     fetch("/api/me").then(r=>r.json()).then(data => {
+        const uph=document.getElementById("user-profile-header");
         if (data.user) {
             document.getElementById("auth-logged-out").classList.add("hidden");
             document.getElementById("auth-logged-in").classList.remove("hidden");
             document.getElementById("auth-username").textContent = getProviderIcon(data.user) + " " + (data.tagged_name || data.display_name || data.user);
+            // Fetch full profile to populate header
+            fetch("/api/user/profile").then(r=>r.json()).then(d=>{
+                if(d.error) return;
+                const u=d.user||{}, s=d.stats||{}, ttl=s.total_replays||0;
+                const tag=u.tagged_name||u.display_name||u.username||"مستخدم";
+                const xpPct=Math.min(100,Math.round(((ttl%10)/10)*100));
+                const rank=ttl>=50?"GC":ttl>=30?"Champ":ttl>=20?"Diamond":ttl>=10?"Plat":ttl>=5?"Gold":ttl>=2?"Silver":"Bronze";
+                document.getElementById("uph-avatar").textContent=tag.charAt(0).toUpperCase();
+                document.getElementById("uph-rank").textContent=rank;
+                document.getElementById("uph-name").textContent=tag;
+                document.getElementById("uph-sub").textContent=u.username||"مستخدم مسجل";
+                document.getElementById("uph-level").textContent="Level "+(Math.floor(ttl/5)+1);
+                document.getElementById("uph-xp").style.width=xpPct+"%";
+                document.getElementById("uph-xp-text").textContent=(ttl%10)+" / 10 XP";
+                uph.classList.remove("hidden");
+            }).catch(()=>{});
+        } else {
+            uph.classList.add("hidden");
         }
         // Check if this user is admin
         fetch("/api/admin/check").then(r=>r.json()).then(ad=>{
@@ -261,7 +280,7 @@ function showProfile(){
     <div class="profile-main">
         <div class="profile-avatar-wrapper">
             <div class="profile-avatar">${tag.charAt(0).toUpperCase()}</div>
-            <div class="rank-badge">${ttl>=50?"GC":ttl>=20?"Champ":ttl>=10?"Diamond":ttl>=5?"Plat":"Gold"}</div>
+            <div class="rank-badge">${ttl>=50?"GC":ttl>=30?"Champ":ttl>=20?"Diamond":ttl>=10?"Plat":ttl>=5?"Gold":ttl>=2?"Silver":"Bronze"}</div>
         </div>
         <div class="profile-info">
             <h2>${tag}</h2>
