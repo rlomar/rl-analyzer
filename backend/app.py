@@ -3,7 +3,7 @@ from datetime import timedelta
 from flask import Flask, request, jsonify, send_from_directory, session, send_file
 from flask_cors import CORS
 from analyzer import RocketLeagueAnalyzer
-from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, get_admin_stats, get_admin_users, check_and_unlock_achievements, get_user_achievements, get_db, award_xp, search_user_exact, get_user_by_display_or_username, get_user_info, get_radar_metrics
+from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, check_and_unlock_achievements, get_user_achievements, get_db, award_xp, search_user_exact, get_user_by_display_or_username, get_user_info, get_radar_metrics
 from urllib.parse import urlencode
 from trends import analyze_trends, generate_scrim_team_analysis
 
@@ -697,36 +697,6 @@ def index():
 @app.route("/<path:path>")
 def static_files(path):
     return send_from_directory(FRONTEND_DIR, path)
-
-# ── ADMIN DASHBOARD ────────────────────────
-def _is_admin():
-    uid = session.get("user_id")
-    if not uid:
-        return False
-    from database import get_db as _gdb
-    try:
-        _c = _gdb()
-        _r = _c.execute("SELECT is_admin FROM users WHERE id = ?", (uid,)).fetchone()
-        _c.close()
-        return bool(_r and _r["is_admin"])
-    except Exception:
-        return False
-
-@app.route("/api/admin/check", methods=["GET"])
-def api_admin_check():
-    return jsonify({"is_admin": _is_admin()})
-
-@app.route("/api/admin/stats", methods=["GET"])
-def api_admin_stats():
-    if not _is_admin():
-        return jsonify({"error": "غير مصرح"}), 403
-    return jsonify(get_admin_stats())
-
-@app.route("/api/admin/users", methods=["GET"])
-def api_admin_users():
-    if not _is_admin():
-        return jsonify({"error": "غير مصرح"}), 403
-    return jsonify({"users": get_admin_users()})
 
 if __name__ == "__main__":
     print("=" * 50)

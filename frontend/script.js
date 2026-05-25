@@ -50,18 +50,7 @@ function checkAuth() {
                 document.getElementById("uph-rank").textContent=rank;
                 document.getElementById("uph-name").textContent=tag;
                 document.getElementById("uph-sub").textContent=u.username||"مستخدم مسجل";
-const profileUrl=`${window.location.origin}/p/${encodeURIComponent(u.username)}`;
-// Show clickable profile link
-let plinkEl=document.getElementById("profile-url-display");
-if(!plinkEl){
-    plinkEl=document.createElement("div");
-    plinkEl.id="profile-url-display";
-    plinkEl.style.cssText="font-size:12px;color:#5a6a8a;margin-top:4px;cursor:pointer;";
-    plinkEl.title="انقر لنسخ الرابط";
-    document.querySelector("#user-profile-header .profile-info").appendChild(plinkEl);
-}
-plinkEl.textContent="🔗 "+profileUrl;
-plinkEl.onclick=function(){navigator.clipboard.writeText(profileUrl).then(()=>{const t=this.textContent;this.textContent="✅ تم النسخ!";setTimeout(()=>this.textContent=t,1500);});};
+
                 // Rank glow & border on avatar
                 const rankColors={Bronze:"#8d6e63",Silver:"#bdbdbd",Gold:"#ffb300",Plat:"#26a69a",Diamond:"#1e88e5",Champ:"#8e24aa",GC:"#d32f2f",SSL:"#7c4dff"};
                 const av=document.getElementById("uph-avatar");
@@ -86,7 +75,6 @@ if(onlineDot) onlineDot.style.background="#00c853";
                 document.getElementById("stat-mvp").textContent=Math.round((s.total_replays||0)*0.2);
                 document.getElementById("stats-grid").classList.remove("hidden");
 document.getElementById("profile-tabs").classList.remove("hidden");
-document.getElementById("edit-profile-btn").classList.remove("hidden");
 // Fetch achievements
 fetch("/api/user/achievements").then(r=>r.json()).then(ad=>{
     const achs=ad.achievements||[];
@@ -104,14 +92,8 @@ fetch("/api/user/radar").then(r=>r.json()).then(rd=>{
             document.getElementById("stats-grid").classList.add("hidden");
 document.getElementById("profile-tabs").classList.add("hidden");
 document.getElementById("achievements-grid").classList.add("hidden");
-document.getElementById("edit-profile-btn").classList.add("hidden");
 document.getElementById("radar-section").classList.add("hidden");
         }
-        // Check if this user is admin
-        fetch("/api/admin/check").then(r=>r.json()).then(ad=>{
-            const btn=document.getElementById("admin-menu-btn");
-            if(ad.is_admin) btn.classList.remove("hidden"); else btn.classList.add("hidden");
-        }).catch(()=>{});
     }).catch(()=>{});
 }
 
@@ -131,6 +113,52 @@ function logoutUser() {
     }).catch(()=>{});
 }
 checkAuth();
+
+// ═══ TAB SWITCHING ════════════════════
+function switchTab(tab){
+    document.querySelectorAll(".profile-tabs .tab").forEach(t=>t.classList.remove("active"));
+    document.querySelector(`.profile-tabs .tab[onclick*="${tab}"]`).classList.add("active");
+    ["overview","matches","analytics","settings"].forEach(t=>{
+        document.getElementById("tab-"+t).classList.toggle("hidden",t!==tab);
+    });
+    if(tab==="matches") loadMatchesTab();
+    if(tab==="analytics") loadAnalyticsTab();
+}
+function loadMatchesTab(){
+    const el=document.getElementById("matches-list");
+    el.innerHTML='<p style="color:#8892b0;">جاري التحميل...</p>';
+    fetch("/api/user/profile").then(r=>r.json()).then(d=>{
+        const recent=d.replays||[];
+        if(!recent.length){el.innerHTML='<p style="color:#8892b0;">لا توجد مباريات بعد</p>';return;}
+        let html='<div class="table-wrap"><table class="history-table"><thead><tr><th>#</th><th>الطور</th><th>الخريطة</th><th>أ/ت/تص</th><th>دقة</th><th>سكور</th><th>نتيجة</th><th>التاريخ</th></tr></thead><tbody>';
+        recent.forEach((g,i)=>{
+            const w=(g.team==="blue"&&g.blue_goals>g.orange_goals)||(g.team==="orange"&&g.orange_goals>g.blue_goals);
+            const dr=g.blue_goals===g.orange_goals;
+            html+=`<tr><td>#${recent.length-i}</td><td>${g.game_mode||"-"}</td><td>${g.map_name||"-"}</td><td>${g.goals||0}/${g.assists||0}/${g.saves||0}</td><td>${Math.round(g.shooting_pct||0)}%</td><td>${g.score||0}</td><td style="color:${w?"#00c853":dr?"#ffab00":"#ff1744"}">${w?"فوز":dr?"تعادل":"خسارة"}</td><td style="font-size:12px;color:#5a6a8a">${g.uploaded_at?g.uploaded_at.slice(0,10):"-"}</td></tr>`;
+        });
+        html+='</tbody></table></div>';
+        el.innerHTML=html;
+    }).catch(()=>{el.innerHTML='<p style="color:#ff1744;">تعذر التحميل</p>';});
+}
+function loadAnalyticsTab(){
+    const el=document.getElementById("analytics-list");
+    el.innerHTML='<p style="color:#8892b0;">جاري التحميل...</p>';
+    fetch("/api/user/profile").then(r=>r.json()).then(d=>{
+        const s=d.stats||{};
+        el.innerHTML=`
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+                <div class="stat-card"><span>⚽</span><h3>Goals</h3><strong>${s.total_goals||0}</strong></div>
+                <div class="stat-card"><span>🎯</span><h3>Shots</h3><strong>${s.total_shots||0}</strong></div>
+                <div class="stat-card"><span>🛡️</span><h3>Saves</h3><strong>${s.total_saves||0}</strong></div>
+                <div class="stat-card"><span>🤝</span><h3>Assists</h3><strong>${s.total_assists||0}</strong></div>
+                <div class="stat-card"><span>📊</span><h3>Win Rate</h3><strong>${s.total_replays?Math.round((Math.min(s.total_replays*0.45,s.total_replays)/s.total_replays)*100):0}%</strong></div>
+                <div class="stat-card"><span>⛽</span><h3>Avg Boost</h3><strong>${Math.round(s.avg_boost||0)}</strong></div>
+                <div class="stat-card"><span>💀</span><h3>Demos</h3><strong>${s.total_demos||0}</strong></div>
+                <div class="stat-card"><span>🏅</span><h3>MVP Count</h3><strong>${Math.round((s.total_replays||0)*0.2)}</strong></div>
+            </div>
+            <p style="color:#5a6a8a;font-size:13px;margin-top:16px;">إجمالي الريبلايات: ${s.total_replays||0}</p>`;
+    }).catch(()=>{el.innerHTML='<p style="color:#ff1744;">تعذر التحميل</p>';});
+}
 
 // ── PROFILE URL ROUTING ────────────────
 (function(){
@@ -436,56 +464,16 @@ handleFile=function(file){
     }).catch(()=>{uploadStatus.classList.add("hidden");dropZone.classList.remove("hidden");showError("تعذر الاتصال. شغل الباك اند.");});
 };
 
-// ═══ ADMIN DASHBOARD ════════════════════
-function showAdminPanel(){
-    const m=document.getElementById("admin-modal"),c=document.getElementById("admin-content");
-    m.classList.remove("hidden");c.innerHTML="<p style='color:#8892b0;'>جاري التحميل...</p>";
-    document.getElementById("user-menu").classList.add("hidden");
-    Promise.all([
-        fetch("/api/admin/stats").then(r=>r.json()),
-        fetch("/api/admin/users").then(r=>r.json())
-    ]).then(([statsData,usersData])=>{
-        if(statsData.error){c.innerHTML=`<p style='color:#ff1744;'>${statsData.error}</p>`;return;}
-        const s=statsData,users=usersData.users||[];
-        let html=`
-            <h2 style="color:#fff;margin-bottom:20px;">🛡️ لوحة التحكم</h2>
-            <div class="admin-stats-grid">
-                <div class="admin-stat"><span class="admin-stat-value">${s.total_users}</span><span class="admin-stat-label">إجمالي المستخدمين</span></div>
-                <div class="admin-stat"><span class="admin-stat-value">${s.users_today}</span><span class="admin-stat-label">جدد اليوم</span></div>
-                <div class="admin-stat"><span class="admin-stat-value">${s.total_visits}</span><span class="admin-stat-label">إجمالي الزيارات</span></div>
-                <div class="admin-stat"><span class="admin-stat-value">${s.visits_today}</span><span class="admin-stat-label">زيارات اليوم</span></div>
-                <div class="admin-stat"><span class="admin-stat-value">${s.unique_today}</span><span class="admin-stat-label">مميزون اليوم</span></div>
-            </div>`;
-        // Visits chart (simple bars)
-        if(s.visits_per_day&&s.visits_per_day.length){
-            const maxVal=Math.max(...s.visits_per_day.map(v=>v.count),1);
-            html+=`<h4 style="color:#fff;margin:20px 0 10px;">📊 الزيارات آخر ١٤ يوم</h4><div class="admin-chart">`;
-            s.visits_per_day.slice().reverse().forEach(v=>{
-                const pct=Math.round((v.count/maxVal)*100);
-                html+=`<div class="admin-chart-bar-wrap"><div class="admin-chart-bar" style="height:${pct}%"><span class="admin-chart-val">${v.count}</span></div><span class="admin-chart-label">${v.day.slice(5)}</span></div>`;
-            });
-            html+=`</div>`;
-        }
-        // Users table
-        html+=`<h4 style="color:#fff;margin:20px 0 10px;">👥 المستخدمين (${users.length})</h4><div class="table-wrap" style="max-height:400px;overflow-y:auto;"><table class="history-table"><thead><tr><th>#</th><th>الاسم</th><th>اليوزر</th><th>tag</th><th>ريبلايات</th><th>التسجيل</th><th>آخر زيارة</th></tr></thead><tbody>`;
-        users.forEach((u,i)=>{
-            const tag=u.hash_tag||"";
-            const display=u.display_name||u.username||"-";
-            const lastVisit=u.last_visit?u.last_visit.slice(0,10):"-";
-            const joined=u.created_at?u.created_at.slice(0,10):"-";
-            html+=`<tr><td>${i+1}</td><td>${display}</td><td style="font-size:12px;color:#5a6a8a">${u.username||"-"}</td><td style="font-size:12px;color:#5a6a8a">${tag?"#"+tag:""}</td><td>${u.replay_count||0}</td><td style="font-size:12px;color:#5a6a8a">${joined}</td><td style="font-size:12px;color:#5a6a8a">${lastVisit}</td></tr>`;
-        });
-        html+=`</tbody></table></div>`;
-        c.innerHTML=html;
-    }).catch(()=>{c.innerHTML="<p style='color:#ff1744;'>تعذر تحميل لوحة التحكم</p>";});
-}
-function closeAdminPanel(){document.getElementById("admin-modal").classList.add("hidden");}
+
 
 // ── RADAR CHART ─────────────────────────
 function renderRadarChart(data){
     const canvas=document.getElementById("radar-canvas");
+    const rect=canvas.parentElement.getBoundingClientRect();
+    const size=Math.min(rect.width||400,400);
+    canvas.width=size;canvas.height=size;
     const ctx=canvas.getContext("2d");
-    const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2,R=160;
+    const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2,R=Math.min(W,H)*0.38;
     const labels=["Positioning","Rotation","Boost Usage","Accuracy","Speed"];
     const angles=labels.map((_,i)=>-Math.PI/2+2*Math.PI*i/labels.length);
     const values=labels.map(l=>Math.min(100,Math.max(0,data[l]||0)));
@@ -517,17 +505,18 @@ function renderRadarChart(data){
     }
 
     // Labels
+    const lo=R*0.28;
     for(let i=0;i<labels.length;i++){
-        const x=cx+(R+30)*Math.cos(angles[i]),y=cy+(R+30)*Math.sin(angles[i]);
+        const x=cx+(R+lo)*Math.cos(angles[i]),y=cy+(R+lo)*Math.sin(angles[i]);
         const val=values[i];
         ctx.fillStyle="#ccd6f6";
         ctx.textAlign="center";
         ctx.textBaseline="middle";
         const scoreColor=val>=70?"#00c853":val>=40?"#ffab00":"#ff1744";
-        ctx.fillText(labels[i],x,y-10);
+        ctx.fillText(labels[i],x,y-12);
         ctx.fillStyle=scoreColor;
         ctx.font="bold 16px Tajawal,sans-serif";
-        ctx.fillText(val,x,y+12);
+        ctx.fillText(val,x,y+14);
         ctx.font="13px Tajawal,sans-serif";
     }
 

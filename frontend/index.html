@@ -41,11 +41,7 @@
                                 الإعدادات
                             </button>
                             <div class="menu-divider"></div>
-                            <div class="menu-divider"></div>
-                            <button id="admin-menu-btn" onclick="showAdminPanel()" class="hidden">
-                                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
-                                لوحة التحكم
-                            </button>
+
                             <button onclick="logoutUser()" class="menu-danger">
                                 <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
                                 تسجيل خروج
@@ -85,61 +81,51 @@
             </div>
         </header>
 
-        <div class="stats-grid hidden" id="stats-grid">
-            <div class="stat-card">
-                <span>⚽</span>
-                <h3>Goals</h3>
-                <strong id="stat-goals">0</strong>
-            </div>
-            <div class="stat-card">
-                <span>🏆</span>
-                <h3>Wins</h3>
-                <strong id="stat-wins">0</strong>
-            </div>
-            <div class="stat-card">
-                <span>🎯</span>
-                <h3>Accuracy</h3>
-                <strong id="stat-accuracy">0%</strong>
-            </div>
-            <div class="stat-card">
-                <span>🚀</span>
-                <h3>MVP</h3>
-                <strong id="stat-mvp">0</strong>
-            </div>
-        </div>
-
-        <div class="achievements-grid hidden" id="achievements-grid">
-            <h3 style="color:#fff;margin-bottom:14px;">🏅 الإنجازات</h3>
-            <div id="achievements-content" class="achievements-content"></div>
-        </div>
-
-        <div class="match-history hidden" id="match-history">
-            <div class="match-item win">
-                <div>
-                    <strong>2v2 Ranked</strong>
-                    <p>W 5-2</p>
-                </div>
-                <div class="match-score">+18 MMR</div>
-            </div>
-        </div>
-
-        <button class="btn btn-sm" id="edit-profile-btn" onclick="showEditProfile()" style="margin-bottom:20px;">⚙️ تعديل البروفايل</button>
-        <button class="btn btn-sm" id="copy-profile-link" onclick="copyProfileLink()" style="margin-bottom:20px;margin-right:8px;">🔗 نسخ الرابط</button>
-
-        <div id="radar-section" class="hidden" style="margin-bottom:24px;">
-            <div class="card">
-                <h2 style="margin-bottom:16px;">📡 Radar Performance</h2>
-                <div style="display:flex;justify-content:center;">
-                    <canvas id="radar-canvas" width="400" height="400"></canvas>
-                </div>
-            </div>
-        </div>
-
         <div class="profile-tabs hidden" id="profile-tabs">
-            <button class="tab active">Overview</button>
-            <button class="tab">Matches</button>
-            <button class="tab">Analytics</button>
-            <button class="tab">Settings</button>
+            <button class="tab active" onclick="switchTab('overview')">Overview</button>
+            <button class="tab" onclick="switchTab('matches')">Matches</button>
+            <button class="tab" onclick="switchTab('analytics')">Analytics</button>
+            <button class="tab" onclick="switchTab('settings')">Settings</button>
+        </div>
+
+        <div id="tab-overview">
+            <div id="stats-grid" class="stats-grid hidden">
+                <div class="stat-card"><span>⚽</span><h3>Goals</h3><strong id="stat-goals">0</strong></div>
+                <div class="stat-card"><span>🏆</span><h3>Wins</h3><strong id="stat-wins">0</strong></div>
+                <div class="stat-card"><span>🎯</span><h3>Accuracy</h3><strong id="stat-accuracy">0%</strong></div>
+                <div class="stat-card"><span>🚀</span><h3>MVP</h3><strong id="stat-mvp">0</strong></div>
+            </div>
+            <div class="achievements-grid hidden" id="achievements-grid">
+                <h3 style="color:#fff;margin-bottom:14px;">🏅 الإنجازات</h3>
+                <div id="achievements-content" class="achievements-content"></div>
+            </div>
+            <div id="radar-section" class="hidden" style="margin-bottom:24px;">
+                <div class="card">
+                    <h2 style="margin-bottom:16px;">📡 Radar Performance</h2>
+                    <div style="display:flex;justify-content:center;">
+                        <canvas id="radar-canvas" style="max-width:100%;height:auto;aspect-ratio:1/1;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-matches" class="hidden">
+            <div class="card" id="matches-tab-content">
+                <h2 style="margin-bottom:16px;">🕐 المباريات الأخيرة</h2>
+                <div id="matches-list"><p style="color:#8892b0;">جاري التحميل...</p></div>
+            </div>
+        </div>
+
+        <div id="tab-analytics" class="hidden">
+            <div class="card" id="analytics-tab-content">
+                <h2 style="margin-bottom:16px;">📊 التحليلات</h2>
+                <div id="analytics-list"><p style="color:#8892b0;">جاري التحميل...</p></div>
+            </div>
+        </div>
+
+        <div id="tab-settings" class="hidden">
+            <button class="btn btn-sm" onclick="showEditProfile()" style="margin-bottom:12px;">⚙️ تعديل البروفايل</button>
+            <button class="btn btn-sm" onclick="showSettings()">⚙️ الإعدادات المتقدمة</button>
         </div>
 
         <div id="user-profile-header" class="profile-header hidden">
@@ -226,13 +212,6 @@
             </div>
         </div>
 
-        <!-- Admin Dashboard Modal -->
-        <div id="admin-modal" class="modal hidden">
-            <div class="modal-content modal-content-wide" style="max-width:800px;">
-                <span class="modal-close" onclick="closeAdminPanel()">✕</span>
-                <div id="admin-content"><p style="color:#8892b0;">جاري التحميل...</p></div>
-            </div>
-        </div>
 
         <main>
             <section id="api-section" class="card">

@@ -825,37 +825,4 @@ def record_visit(path, user_id=None, ip=None, user_agent=None):
     conn.commit()
     conn.close()
 
-def get_admin_stats():
-    conn = get_db()
-    total_users = _c(conn, "SELECT COUNT(*) AS total FROM users").fetchone()["total"]
-    users_today = _c(conn, "SELECT COUNT(*) AS total FROM users WHERE created_at::date = CURRENT_DATE").fetchone()["total"] if USE_PG else _c(conn, "SELECT COUNT(*) AS total FROM users WHERE date(created_at) = date('now')").fetchone()["total"]
-    total_visits = _c(conn, "SELECT COUNT(*) AS total FROM page_visits").fetchone()["total"]
-    visits_today = _c(conn, "SELECT COUNT(*) AS total FROM page_visits WHERE visited_at::date = CURRENT_DATE").fetchone()["total"] if USE_PG else _c(conn, "SELECT COUNT(*) AS total FROM page_visits WHERE date(visited_at) = date('now')").fetchone()["total"]
-    unique_today = _c(conn, "SELECT COUNT(DISTINCT COALESCE(user_id, ip::text)) AS total FROM page_visits WHERE visited_at::date = CURRENT_DATE").fetchone()["total"] if USE_PG else _c(conn, "SELECT COUNT(DISTINCT COALESCE(user_id, ip)) AS total FROM page_visits WHERE date(visited_at) = date('now')").fetchone()["total"]
-    visits_per_day = _c(conn,
-        "SELECT visited_at::date AS day, COUNT(*) AS count, COUNT(DISTINCT COALESCE(user_id, ip::text)) AS uniques FROM page_visits WHERE visited_at >= CURRENT_DATE - INTERVAL '14 days' GROUP BY visited_at::date ORDER BY day DESC"
-        if USE_PG else
-        "SELECT date(visited_at) AS day, COUNT(*) AS count, COUNT(DISTINCT COALESCE(user_id, ip)) AS uniques FROM page_visits WHERE visited_at >= date('now', '-14 days') GROUP BY date(visited_at) ORDER BY day DESC"
-    ).fetchall()
-    conn.close()
-    return {
-        "total_users": total_users,
-        "users_today": users_today,
-        "total_visits": total_visits,
-        "visits_today": visits_today,
-        "unique_today": unique_today,
-        "visits_per_day": visits_per_day,
-    }
 
-def get_admin_users():
-    conn = get_db()
-    sql = """
-        SELECT u.id, u.username, u.display_name, u.hash_tag, u.created_at,
-               (SELECT COUNT(*) FROM replays WHERE user_id = u.id) AS replay_count,
-               (SELECT MAX(visited_at) FROM page_visits WHERE user_id = u.id) AS last_visit
-        FROM users u
-        ORDER BY u.created_at DESC
-    """
-    rows = _c(conn, sql).fetchall()
-    conn.close()
-    return rows
