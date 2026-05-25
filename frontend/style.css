@@ -557,6 +557,31 @@ h1 span {
     gap: 18px;
     margin-bottom: 28px;
 }
+.match-history {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 28px;
+}
+.match-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(15,20,35,0.75);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 16px;
+    padding: 16px 20px;
+    transition: 0.2s;
+}
+.match-item:hover {
+    border-color: rgba(255,255,255,0.1);
+    transform: translateX(-4px);
+}
+.match-item strong { font-size: 14px; color: #fff; display: block; margin-bottom: 2px; }
+.match-item p { font-size: 13px; margin: 0; }
+.match-item.win p { color: #00c853; }
+.match-item.loss p { color: #ff1744; }
+.match-score { font-size: 14px; font-weight: 700; color: #5b8cff; }
 .stat-card {
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,255,255,0.05);
