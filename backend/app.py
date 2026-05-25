@@ -148,8 +148,22 @@ def analyze_replay():
             os.remove(filepath)
 
 import feedparser
+import re
+from functools import lru_cache
 
 NEWS_FEED_URL = "https://store.steampowered.com/feeds/news/app/252950/?cc=US&l=en"
+
+def translate_ar(text):
+    try:
+        from deep_translator import GoogleTranslator
+        result = GoogleTranslator(source="en", target="ar").translate(text[:5000])
+        return result if result else text
+    except Exception:
+        return text
+
+@lru_cache(maxsize=128)
+def cached_translate(text):
+    return translate_ar(text)
 
 @app.route("/api/news", methods=["GET"])
 def api_news():
@@ -158,15 +172,13 @@ def api_news():
         items = []
         for entry in feed.entries[:10]:
             desc = entry.get("summary", "")
-            # Strip HTML tags for a clean description
-            import re
-            clean_desc = re.sub(r"<[^>]+>", "", desc)[:300]
+            clean_desc = re.sub(r"<[^>]+>", "", desc)[:500]
+            title = entry.get("title", "")
             items.append({
-                "title": entry.get("title", ""),
+                "title": cached_translate(title),
                 "link": entry.get("link", ""),
                 "published": entry.get("published", ""),
-                "description": clean_desc,
-                "image": None
+                "description": cached_translate(clean_desc),
             })
         return jsonify({"success": True, "items": items})
     except Exception as e:
