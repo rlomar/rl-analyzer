@@ -11,17 +11,41 @@ def get_db():
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
-def create_user(username, password):
+def create_user(username, password=None, steam_id=None, epic_id=None):
     conn = get_db()
     try:
-        conn.execute("INSERT INTO users (username, password) VALUES (?, ?)",
-                      (username, generate_password_hash(password)))
+        if steam_id:
+            conn.execute("INSERT INTO users (username, steam_id) VALUES (?, ?)",
+                          (username, steam_id))
+        elif epic_id:
+            conn.execute("INSERT INTO users (username, epic_id) VALUES (?, ?)",
+                          (username, epic_id))
+        else:
+            conn.execute("INSERT INTO users (username, password) VALUES (?, ?)",
+                          (username, generate_password_hash(password)))
         conn.commit()
-        return True
+        uid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        return uid
     except sqlite3.IntegrityError:
-        return False
+        return None
     finally:
         conn.close()
+
+def get_user_by_steam(steam_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username FROM users WHERE steam_id = ?", (steam_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def get_user_by_epic(epic_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username FROM users WHERE epic_id = ?", (epic_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 def verify_user(username, password):
     conn = get_db()
@@ -33,13 +57,45 @@ def verify_user(username, password):
         return True
     return False
 
+def get_user_history(user_id, limit=20):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT r.*, ps.player_name, ps.goals, ps.assists, ps.saves, ps.score,
+               ps.shooting_pct, ps.boost_avg
+        FROM replays r
+        JOIN player_stats ps ON ps.replay_id = r.id
+        WHERE r.user_id = ? AND ps.player_name = r.user_player_name
+        ORDER BY r.uploaded_at DESC LIMIT ?
+    """, (user_id, limit))
+    rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return rows
+
+def update_last_replay_player_name(user_id, player_name):
+    conn = get_db()
+    conn.execute("UPDATE replays SET user_player_name = ? WHERE user_id = ? AND id = (SELECT MAX(id) FROM replays WHERE user_id = ?)", (player_name, user_id, user_id))
+    conn.commit()
+    conn.close()
+
+def set_user_display_name(user_id, player_name):
+    conn = get_db()
+    conn.execute("UPDATE users SET display_name = ? WHERE id = ?", (player_name, user_id))
+    conn.commit()
+    conn.close()
+
 def init_db():
     conn = get_db()
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
+            password TEXT,
+            steam_id TEXT UNIQUE,
+            epic_id TEXT UNIQUE,
+            display_name TEXT,
+            avatar TEXT,
+            bio TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS replays (
@@ -54,6 +110,8 @@ def init_db():
             orange_name TEXT,
             blue_goals INTEGER DEFAULT 0,
             orange_goals INTEGER DEFAULT 0,
+            user_id INTEGER,
+            user_player_name TEXT,
             uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS player_stats (
@@ -111,14 +169,23 @@ def init_db():
             total_saves INTEGER DEFAULT 0,
             total_assists INTEGER DEFAULT 0
         );
+        CREATE TABLE IF NOT EXISTS user_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER UNIQUE REFERENCES users(id),
+            preferred_mode TEXT DEFAULT '3v3',
+            auto_link_player INTEGER DEFAULT 0,
+            show_team_analysis INTEGER DEFAULT 1,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE INDEX IF NOT EXISTS idx_player_stats_name ON player_stats(player_name);
         CREATE INDEX IF NOT EXISTS idx_player_stats_replay ON player_stats(replay_id);
         CREATE INDEX IF NOT EXISTS idx_replays_mode ON replays(game_mode);
+        CREATE INDEX IF NOT EXISTS idx_replays_user ON replays(user_id);
     """)
     conn.commit()
     conn.close()
 
-def save_replay(replay_data, game_mode, players_analysis):
+def save_replay(replay_data, game_mode, players_analysis, user_id=None, user_player_name=None):
     conn = get_db()
     cursor = conn.cursor()
 
@@ -130,8 +197,9 @@ def save_replay(replay_data, game_mode, players_analysis):
 
     cursor.execute("""
         INSERT INTO replays (replay_id, game_mode, map_name, duration, overtime,
-                            playlist, blue_name, orange_name, blue_goals, orange_goals)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            playlist, blue_name, orange_name, blue_goals, orange_goals,
+                            user_id, user_player_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         replay_data.get("id", ""),
         game_mode,
@@ -143,6 +211,8 @@ def save_replay(replay_data, game_mode, players_analysis):
         replay_data.get("orange", {}).get("name", "Orange"),
         team_goals.get("blue", 0),
         team_goals.get("orange", 0),
+        user_id,
+        user_player_name,
     ))
     replay_pk = cursor.lastrowid
 
@@ -260,3 +330,87 @@ def get_team_stats_for_replay(replay_pk):
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
     return rows
+
+# ── USER SETTINGS ──────────────────────
+def get_user_settings(user_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM user_settings WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    if not row:
+        cursor.execute("INSERT INTO user_settings (user_id) VALUES (?)", (user_id,))
+        conn.commit()
+        cursor.execute("SELECT * FROM user_settings WHERE user_id = ?", (user_id,))
+        row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else {}
+
+def update_user_settings(user_id, settings):
+    conn = get_db()
+    allowed = {"preferred_mode", "auto_link_player", "show_team_analysis"}
+    updates = {k: v for k, v in settings.items() if k in allowed}
+    if updates:
+        sets = ", ".join(f"{k} = ?" for k in updates)
+        vals = list(updates.values()) + [user_id]
+        conn.execute(f"UPDATE user_settings SET {sets}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?", vals)
+        conn.commit()
+    conn.close()
+
+# ── USER AGGREGATED STATS ──────────────
+def get_user_aggregated_stats(user_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT
+            COUNT(DISTINCT r.id) AS total_replays,
+            COUNT(DISTINCT r.game_mode) AS modes_played,
+            SUM(ps.goals) AS total_goals,
+            SUM(ps.assists) AS total_assists,
+            SUM(ps.saves) AS total_saves,
+            SUM(ps.shots) AS total_shots,
+            SUM(ps.score) AS total_score,
+            AVG(ps.shooting_pct) AS avg_shooting_pct,
+            AVG(ps.boost_avg) AS avg_boost,
+            AVG(ps.avg_speed) AS avg_speed,
+            AVG(ps.percent_offensive) AS avg_offensive,
+            AVG(ps.percent_defensive) AS avg_defensive,
+            SUM(ps.demos_inflicted) AS total_demos,
+            SUM(ps.demos_taken) AS total_demos_taken,
+            AVG(ps.percent_supersonic) AS avg_supersonic,
+            AVG(ps.dist_ball) AS avg_dist_ball,
+            AVG(ps.dist_mates) AS avg_dist_mates
+        FROM replays r
+        JOIN player_stats ps ON ps.replay_id = r.id
+        WHERE r.user_id = ? AND ps.player_name = r.user_player_name
+    """, (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else {}
+
+def get_user_recent_replays(user_id, limit=10):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT r.*, ps.player_name, ps.goals, ps.assists, ps.saves, ps.score,
+               ps.shooting_pct, ps.boost_avg
+        FROM replays r
+        JOIN player_stats ps ON ps.replay_id = r.id
+        WHERE r.user_id = ? AND ps.player_name = r.user_player_name
+        ORDER BY r.uploaded_at DESC LIMIT ?
+    """, (user_id, limit))
+    rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return rows
+
+def update_user_profile(user_id, display_name=None, avatar=None, bio=None):
+    conn = get_db()
+    updates = {}
+    if display_name is not None: updates["display_name"] = display_name
+    if avatar is not None: updates["avatar"] = avatar
+    if bio is not None: updates["bio"] = bio
+    if updates:
+        sets = ", ".join(f"{k} = ?" for k in updates)
+        vals = list(updates.values()) + [user_id]
+        conn.execute(f"UPDATE users SET {sets} WHERE id = ?", vals)
+        conn.commit()
+    conn.close()

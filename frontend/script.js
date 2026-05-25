@@ -43,6 +43,12 @@ if (savedKey) {
 // ═══ AUTH ═══════════════════════════════════
 let authMode = "login";
 
+function getProviderIcon(username) {
+    if (username.startsWith("steam_")) return "🎮";
+    if (username.startsWith("epic_")) return "⭐";
+    return "👤";
+}
+
 function checkAuth() {
     fetch("/api/me")
         .then(r => r.json())
@@ -50,7 +56,8 @@ function checkAuth() {
             if (data.user) {
                 document.getElementById("auth-logged-out").classList.add("hidden");
                 document.getElementById("auth-logged-in").classList.remove("hidden");
-                document.getElementById("auth-username").textContent = data.user;
+                const displayName = data.display_name || data.user;
+                document.getElementById("auth-username").textContent = getProviderIcon(data.user) + " " + displayName;
             }
         })
         .catch(() => {});
@@ -88,7 +95,7 @@ function handleAuth(event) {
             closeAuthModal();
             document.getElementById("auth-logged-out").classList.add("hidden");
             document.getElementById("auth-logged-in").classList.remove("hidden");
-            document.getElementById("auth-username").textContent = data.user;
+            document.getElementById("auth-username").textContent = getProviderIcon(data.user) + " " + data.user;
         } else {
             errorEl.textContent = data.error || "حدث خطأ";
             errorEl.style.display = "block";
@@ -899,6 +906,328 @@ coachInput.addEventListener("keydown", function (e) {
     if (e.key === "Enter") handleCoachSend();
 });
 
+// ═══ STEAM LOGIN ═════════════════════════
+function steamLogin() {
+    fetch("/api/auth/steam")
+        .then(r => r.json())
+        .then(data => {
+            if (data.url) {
+                const w = window.open(data.url, "steam-login", "width=600,height=700");
+                const timer = setInterval(() => {
+                    if (w.closed) {
+                        clearInterval(timer);
+                        checkAuth();
+                    }
+                }, 500);
+            }
+        })
+        .catch(() => alert("تعذر الاتصال بالخادم"));
+}
 
+// ═══ EPIC GAMES LOGIN ═══════════════════
+function epicLogin() {
+    fetch("/api/auth/epic")
+        .then(r => r.json())
+        .then(data => {
+            if (data.url) {
+                const w = window.open(data.url, "epic-login", "width=600,height=700");
+                const timer = setInterval(() => {
+                    if (w.closed) {
+                        clearInterval(timer);
+                        checkAuth();
+                    }
+                }, 500);
+            }
+        })
+        .catch(() => alert("تعذر الاتصال بالخادم"));
+}
 
+window.addEventListener("message", function(e) {
+    if (e.data === "steam-login-success" || e.data === "epic-login-success") {
+        checkAuth();
+    }
+});
 
+// ═══ USER PROFILE ════════════════════════
+function showProfile() {
+    const modal = document.getElementById("profile-modal");
+    const content = document.getElementById("profile-content");
+    modal.classList.remove("hidden");
+    content.innerHTML = "<p style='color:#8892b0;'>جاري تحميل الملف الشخصي...</p>";
+
+    fetch("/api/user/profile")
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                content.innerHTML = `<p style='color:#ff1744;'>${data.error}</p>`;
+                return;
+            }
+            const u = data.user || {};
+            const s = data.stats || {};
+            const recent = data.recent || [];
+            const totalReplays = s.total_replays || 0;
+
+            let html = `
+                <div class="profile-header-card">
+                    <div class="profile-avatar">${u.display_name ? u.display_name.charAt(0).toUpperCase() : "?"}</div>
+                    <div class="profile-info">
+                        <h3 style="color:#fff;font-size:20px;margin-bottom:4px;">${u.display_name || u.username || "مستخدم"}</h3>
+                        <p style="color:#8892b0;font-size:13px;">${u.username || ""}</p>
+                    </div>
+                </div>
+            `;
+
+            if (totalReplays > 0) {
+                html += `
+                <div class="profile-stats-grid">
+                    <div class="profile-stat">
+                        <span class="profile-stat-value">${totalReplays}</span>
+                        <span class="profile-stat-label">إجمالي الريبلايات</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="profile-stat-value">${s.total_goals || 0}</span>
+                        <span class="profile-stat-label">إجمالي الأهداف</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="profile-stat-value">${s.total_assists || 0}</span>
+                        <span class="profile-stat-label">إجمالي التمريرات</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="profile-stat-value">${s.total_saves || 0}</span>
+                        <span class="profile-stat-label">إجمالي التصديات</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="profile-stat-value">${Math.round(s.avg_shooting_pct || 0)}%</span>
+                        <span class="profile-stat-label">معدل دقة التسديد</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="profile-stat-value">${Math.round(s.avg_boost || 0)}</span>
+                        <span class="profile-stat-label">معدل البوست</span>
+                    </div>
+                </div>`;
+            } else {
+                html += `<p style="color:#8892b0;margin:20px 0;text-align:center;">ما عندك ريبلايات مسجلة لحسابك. ارفع ريبلاي واختر اسمك عشان تبدأ.</p>`;
+            }
+
+            // Recent replays
+            if (recent.length > 0) {
+                html += `<h4 style="color:#fff;margin:20px 0 10px;">🕐 آخر الريبلايات</h4><div class="table-wrap" style="max-height:250px;overflow-y:auto;">`;
+                html += `<table class="history-table"><thead><tr><th>#</th><th>اللاعب</th><th>الطور</th><th>أ/ت/تص</th><th>سكور</th><th>التاريخ</th></tr></thead><tbody>`;
+                recent.forEach((g, i) => {
+                    html += `<tr>
+                        <td>#${recent.length - i}</td>
+                        <td>${g.player_name || "-"}</td>
+                        <td>${g.game_mode || "-"}</td>
+                        <td>${g.goals || 0}/${g.assists || 0}/${g.saves || 0}</td>
+                        <td>${g.score || 0}</td>
+                        <td style="font-size:12px;color:#5a6a8a">${g.uploaded_at ? g.uploaded_at.slice(0, 10) : "-"}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table></div>`;
+            }
+
+            // Settings section
+            const settings = data.settings || {};
+            html += `
+                <hr style="border-color:rgba(255,255,255,0.05);margin:20px 0;">
+                <div class="profile-settings-section">
+                    <h4 style="color:#fff;margin-bottom:15px;">
+                        <svg viewBox="0 0 24 24" width="18" height="18" style="vertical-align:middle;margin-left:6px;"><path fill="currentColor" d="M19.14 12.94c.04-.32.07-.64.07-.94s-.03-.62-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.49.49 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.32-.07.64-.07.94s.03.62.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58z"/></svg>
+                        ربط اسمك في الريبلاي
+                    </h4>
+                    <p style="color:#8892b0;font-size:13px;margin-bottom:10px;">اكتب اسمك عشان الريبلايات الجديدة ترتبط بحسابك تلقائياً:</p>
+                    <div style="display:flex;gap:10px;">
+                        <input type="text" id="player-name-setting" placeholder="اسمك في روكيت ليق" style="flex:1;padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;direction:rtl;">
+                        <button class="btn" onclick="savePlayerName()">حفظ</button>
+                    </div>
+                </div>`;
+
+            content.innerHTML = html;
+
+            // Load current display_name
+            if (u.display_name) {
+                document.getElementById("player-name-setting").value = u.display_name;
+            }
+        })
+        .catch(() => {
+            content.innerHTML = "<p style='color:#ff1744;'>تعذر تحميل الملف الشخصي</p>";
+        });
+}
+
+function closeProfile() {
+    document.getElementById("profile-modal").classList.add("hidden");
+}
+
+function savePlayerName() {
+    const name = document.getElementById("player-name-setting").value.trim();
+    if (!name) { alert("اكتب اسمك أول"); return; }
+    fetch("/api/user/update-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ display_name: name })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            alert("✅ تم الحفظ");
+            checkAuth();
+        }
+        else alert(d.error || "خطأ");
+    })
+    .catch(() => alert("فشل الحفظ"));
+}
+
+// ═══ USER SETTINGS ══════════════════════
+function showSettings() {
+    const modal = document.getElementById("settings-modal");
+    const content = document.getElementById("settings-content");
+    modal.classList.remove("hidden");
+    content.innerHTML = "<p style='color:#8892b0;'>جاري التحميل...</p>";
+
+    fetch("/api/user/settings")
+        .then(r => r.json())
+        .then(data => {
+            const s = data.settings || {};
+            content.innerHTML = `
+                <div class="settings-group">
+                    <label class="settings-label">نمط اللعب المفضل</label>
+                    <select id="settings-preferred-mode" class="settings-select">
+                        <option value="1v1" ${s.preferred_mode === "1v1" ? "selected" : ""}>1v1</option>
+                        <option value="2v2" ${s.preferred_mode === "2v2" ? "selected" : ""}>2v2</option>
+                        <option value="3v3" ${s.preferred_mode === "3v3" ? "selected" : ""}>3v3</option>
+                        <option value="scrim" ${s.preferred_mode === "scrim" ? "selected" : ""}>Scrim</option>
+                    </select>
+                </div>
+                <div class="settings-group">
+                    <label class="settings-label">البيو (عن نفسك)</label>
+                    <textarea id="settings-bio" class="settings-textarea" placeholder="اكتب شي عن نفسك..." rows="3">${data.bio || ""}</textarea>
+                </div>
+                <div class="settings-group">
+                    <label class="settings-toggle">
+                        <input type="checkbox" id="settings-auto-link" ${s.auto_link_player ? "checked" : ""}>
+                        <span class="toggle-slider"></span>
+                        <span>ربط اسم اللاعب تلقائياً بعد الرفع</span>
+                    </label>
+                </div>
+                <div class="settings-group">
+                    <label class="settings-toggle">
+                        <input type="checkbox" id="settings-team-analysis" ${s.show_team_analysis !== 0 ? "checked" : ""}>
+                        <span class="toggle-slider"></span>
+                        <span>عرض تحليل الفريق</span>
+                    </label>
+                </div>
+                <button class="btn" style="width:100%;margin-top:20px;" onclick="saveSettings()">💾 حفظ الإعدادات</button>
+            `;
+        })
+        .catch(() => {
+            content.innerHTML = "<p style='color:#ff1744;'>تعذر تحميل الإعدادات</p>";
+        });
+}
+
+function closeSettings() {
+    document.getElementById("settings-modal").classList.add("hidden");
+}
+
+function saveSettings() {
+    const settings = {
+        preferred_mode: document.getElementById("settings-preferred-mode").value,
+        auto_link_player: document.getElementById("settings-auto-link").checked ? 1 : 0,
+        show_team_analysis: document.getElementById("settings-team-analysis").checked ? 1 : 0,
+    };
+    const bio = document.getElementById("settings-bio") ? document.getElementById("settings-bio").value.trim() : "";
+    fetch("/api/user/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings)
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            // Also save bio if present
+            if (bio) {
+                fetch("/api/user/update-profile", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ bio })
+                }).catch(() => {});
+            }
+            alert("✅ تم حفظ الإعدادات");
+            closeSettings();
+        } else {
+            alert(d.error || "خطأ");
+        }
+    })
+    .catch(() => alert("فشل الحفظ"));
+}
+
+// ═══ PLAYER NAME PICKER (after upload) ══
+let pendingResults = null;
+
+function showPlayerPicker(players) {
+    if (!players || !players.length) return;
+    const select = document.getElementById("player-picker-select");
+    select.innerHTML = players.map(p => `<option value="${p.name}">${p.name}</option>`).join("");
+    document.getElementById("player-picker-modal").classList.remove("hidden");
+}
+
+function confirmPlayerPick() {
+    const name = document.getElementById("player-picker-select").value;
+    document.getElementById("player-picker-modal").classList.add("hidden");
+    saveAsUserReplay(name);
+}
+
+function skipPlayerPick() {
+    document.getElementById("player-picker-modal").classList.add("hidden");
+    saveAsUserReplay(null);
+}
+
+function saveAsUserReplay(playerName) {
+    if (playerName) {
+        fetch("/api/user/link-player", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ player_name: playerName })
+        }).catch(() => {});
+    }
+    showResults(pendingResults);
+    pendingResults = null;
+}
+
+// Modify handleFile to show player picker for logged-in users
+handleFile = function(file) {
+    if (!file.name.toLowerCase().endsWith(".replay")) {
+        showError("الملف لازم يكون .replay");
+        return;
+    }
+    if (!localStorage.getItem("rl_api_key")) {
+        showError("سوي حفظ لمفتاح API الأول");
+        return;
+    }
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("game_mode", gameMode);
+    dropZone.classList.add("hidden");
+    uploadStatus.classList.remove("hidden");
+    fetch(API_URL, { method: "POST", body: formData })
+    .then(res => res.json())
+    .then(data => {
+        uploadStatus.classList.add("hidden");
+        dropZone.classList.remove("hidden");
+        if (data.success) {
+            pendingResults = data;
+            // Check if user is logged in and has players
+            fetch("/api/me").then(r => r.json()).then(u => {
+                if (u.user && u.user_id && data.players && data.players.length) {
+                    showPlayerPicker(data.players);
+                } else {
+                    showResults(data);
+                }
+            }).catch(() => showResults(data));
+        } else showError(data.error || "خطأ غير معروف");
+    })
+    .catch(() => {
+        uploadStatus.classList.add("hidden");
+        dropZone.classList.remove("hidden");
+        showError("تعذر الاتصال. شغل الباك اند.");
+    });
+};

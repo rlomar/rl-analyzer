@@ -2,7 +2,8 @@ import os, json, tempfile, time
 from flask import Flask, request, jsonify, send_from_directory, session
 from flask_cors import CORS
 from analyzer import RocketLeagueAnalyzer
-from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user
+from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, set_user_display_name, update_last_replay_player_name
+from urllib.parse import urlencode
 from trends import analyze_trends, generate_scrim_team_analysis
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -39,6 +40,132 @@ MODE_LABELS = {"1v1": "فردي 1v1", "2v2": "زوجي 2v2", "3v3": "فريق 3v
 
 init_db()
 
+STEAM_OPENID = "https://steamcommunity.com/openid/login"
+
+def get_db_user_id(username):
+    from database import get_db
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, display_name FROM users WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+# ── STEAM LOGIN ────────────────────────────
+@app.route("/api/auth/steam")
+def api_auth_steam():
+    base = request.host_url.rstrip("/")
+    params = urlencode({
+        "openid.ns": "http://specs.openid.net/auth/2.0",
+        "openid.mode": "checkid_setup",
+        "openid.return_to": f"{base}/api/auth/steam/callback",
+        "openid.realm": base,
+        "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
+        "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
+    })
+    return jsonify({"url": f"{STEAM_OPENID}?{params}"})
+
+@app.route("/api/auth/steam/callback")
+def api_auth_steam_callback():
+    args = request.args
+    if args.get("openid.mode") == "id_res":
+        sid = args.get("openid.claimed_id", "").replace("https://steamcommunity.com/openid/id/", "")
+        if sid:
+            user = get_user_by_steam(sid)
+            if user:
+                session["user"] = user["username"]
+                session["user_id"] = user["id"]
+            else:
+                uid = create_user(f"steam_{sid}", steam_id=sid)
+                if uid:
+                    session["user"] = f"steam_{sid}"
+                    session["user_id"] = uid
+            return '<script>if(window.opener){window.opener.postMessage("steam-login-success","*");window.close()}else{location="/"}</script>'
+    return '<script>if(window.opener)window.close();else location="/"</script>'
+
+# ── EPIC GAMES AUTH ──────────────────────────
+@app.route("/api/auth/epic")
+def api_auth_epic():
+    base = request.host_url.rstrip("/")
+    params = urlencode({
+        "openid.ns": "http://specs.openid.net/auth/2.0",
+        "openid.mode": "checkid_setup",
+        "openid.return_to": f"{base}/api/auth/epic/callback",
+        "openid.realm": base,
+        "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
+        "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
+    })
+    return jsonify({"url": f"{STEAM_OPENID}?{params}"})
+
+@app.route("/api/auth/epic/callback")
+def api_auth_epic_callback():
+    args = request.args
+    if args.get("openid.mode") == "id_res":
+        eid = args.get("openid.claimed_id", "").replace("https://steamcommunity.com/openid/id/", "")
+        if eid:
+            user = get_user_by_epic(eid)
+            if user:
+                session["user"] = user["username"]
+                session["user_id"] = user["id"]
+            else:
+                uid = create_user(f"epic_{eid}", epic_id=eid)
+                if uid:
+                    session["user"] = f"epic_{eid}"
+                    session["user_id"] = uid
+            return '<script>if(window.opener){window.opener.postMessage("epic-login-success","*");window.close()}else{location="/"}</script>'
+    return '<script>if(window.opener)window.close();else location="/"</script>'
+
+# ── USER PROFILE & SETTINGS ─────────────────
+@app.route("/api/user/profile", methods=["GET"])
+def api_user_profile():
+    if "user_id" not in session:
+        return jsonify({"error": "ما أنت مسجل دخول"}), 401
+    uid = session["user_id"]
+    info = get_db_user_id(session.get("user"))
+    stats = get_user_aggregated_stats(uid)
+    settings = get_user_settings(uid)
+    recent = get_user_recent_replays(uid, limit=5)
+    return jsonify({
+        "user": {
+            "username": info["username"] if info else None,
+            "display_name": info["display_name"] if info else None,
+        },
+        "stats": stats,
+        "settings": settings,
+        "recent": recent,
+    })
+
+@app.route("/api/user/settings", methods=["GET", "POST"])
+def api_user_settings():
+    if "user_id" not in session:
+        return jsonify({"error": "ما أنت مسجل دخول"}), 401
+    if request.method == "GET":
+        settings = get_user_settings(session["user_id"])
+        return jsonify({"settings": settings})
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "لا يوجد بيانات"}), 400
+    update_user_settings(session["user_id"], data)
+    return jsonify({"success": True})
+
+@app.route("/api/user/stats", methods=["GET"])
+def api_user_stats():
+    if "user_id" not in session:
+        return jsonify({"error": "ما أنت مسجل دخول"}), 401
+    stats = get_user_aggregated_stats(session["user_id"])
+    return jsonify({"stats": stats})
+
+@app.route("/api/user/update-profile", methods=["POST"])
+def api_update_profile():
+    if "user_id" not in session:
+        return jsonify({"error": "ما أنت مسجل دخول"}), 401
+    data = request.get_json()
+    display_name = data.get("display_name", "").strip()
+    bio = data.get("bio", "").strip()
+    update_user_profile(session["user_id"], display_name=display_name or None, bio=bio or None)
+    return jsonify({"success": True})
+
+# ── PASSWORD AUTH ──────────────────────────
 @app.route("/api/register", methods=["POST"])
 def api_register():
     data = request.get_json()
@@ -46,8 +173,10 @@ def api_register():
     password = data.get("password", "").strip()
     if len(username) < 3: return jsonify({"error": "اسم المستخدم ٣ أحرف على الأقل"}), 400
     if len(password) < 4: return jsonify({"error": "كلمة المرور ٤ أحرف على الأقل"}), 400
-    if create_user(username, password):
+    uid = create_user(username, password)
+    if uid:
         session["user"] = username
+        session["user_id"] = uid
         return jsonify({"success": True, "user": username})
     return jsonify({"error": "اسم المستخدم موجود مسبقاً"}), 409
 
@@ -57,19 +186,30 @@ def api_login():
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
     if verify_user(username, password):
+        info = get_db_user_id(username)
         session["user"] = username
+        session["user_id"] = info["id"] if info else None
         return jsonify({"success": True, "user": username})
     return jsonify({"error": "اسم المستخدم أو كلمة المرور خطأ"}), 401
 
 @app.route("/api/logout", methods=["POST"])
 def api_logout():
     session.pop("user", None)
+    session.pop("user_id", None)
     return jsonify({"success": True})
 
 @app.route("/api/me", methods=["GET"])
 def api_me():
-    if "user" in session:
-        return jsonify({"user": session["user"]})
+    info = get_db_user_id(session.get("user")) if "user" in session else None
+    if info:
+        from database import get_user_settings as _gus
+        settings = _gus(info["id"])
+        return jsonify({
+            "user": session["user"],
+            "user_id": info["id"],
+            "display_name": info["display_name"],
+            "settings": settings,
+        })
     return jsonify({"user": None})
 
 @app.route("/api/set-key", methods=["POST"])
@@ -153,7 +293,9 @@ def analyze_replay():
         }
 
         # Save to database
-        save_replay(data, game_mode, results)
+        user_id = session.get("user_id")
+        user_player_name = request.form.get("player_name") or None
+        save_replay(data, game_mode, results, user_id=user_id, user_player_name=user_player_name)
 
         # Load trends for each player
         trends_data = {}
@@ -200,6 +342,35 @@ def api_trends(player_name):
     if not summary:
         return jsonify({"error": "ما فيه معلومات كافية عن هذا اللاعب", "games": 0}), 404
     return jsonify(summary)
+
+@app.route("/api/user/history", methods=["GET"])
+def api_user_history():
+    if "user_id" not in session:
+        return jsonify({"error": "ما أنت مسجل دخول"}), 401
+    history = get_user_history(session["user_id"])
+    return jsonify({"history": history})
+
+@app.route("/api/user/link-player", methods=["POST"])
+def api_link_player():
+    if "user_id" not in session:
+        return jsonify({"error": "ما أنت مسجل دخول"}), 401
+    data = request.get_json()
+    player_name = data.get("player_name", "").strip()
+    if not player_name:
+        return jsonify({"error": "الاسم مطلوب"}), 400
+    update_last_replay_player_name(session["user_id"], player_name)
+    return jsonify({"success": True})
+
+@app.route("/api/user/set-player-name", methods=["POST"])
+def api_set_player_name():
+    if "user_id" not in session:
+        return jsonify({"error": "ما أنت مسجل دخول"}), 401
+    data = request.get_json()
+    player_name = data.get("player_name", "").strip()
+    if not player_name:
+        return jsonify({"error": "الاسم مطلوب"}), 400
+    set_user_display_name(session["user_id"], player_name)
+    return jsonify({"success": True})
 
 @app.route("/")
 def index():
