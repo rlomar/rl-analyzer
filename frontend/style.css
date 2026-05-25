@@ -21,6 +21,11 @@ body {
 }
 
 header {
+    position: sticky;
+    top: 0;
+    backdrop-filter: blur(14px);
+    background: rgba(5,8,22,0.75);
+    z-index: 100;
     padding: 30px 0 20px;
 }
 
