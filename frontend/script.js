@@ -51,6 +51,17 @@ function checkAuth() {
                 document.getElementById("uph-name").textContent=tag;
                 document.getElementById("uph-sub").textContent=u.username||"مستخدم مسجل";
 const profileUrl=`${window.location.origin}/p/${encodeURIComponent(u.username)}`;
+// Show clickable profile link
+let plinkEl=document.getElementById("profile-url-display");
+if(!plinkEl){
+    plinkEl=document.createElement("div");
+    plinkEl.id="profile-url-display";
+    plinkEl.style.cssText="font-size:12px;color:#5a6a8a;margin-top:4px;cursor:pointer;";
+    plinkEl.title="انقر لنسخ الرابط";
+    document.querySelector("#user-profile-header .profile-info").appendChild(plinkEl);
+}
+plinkEl.textContent="🔗 "+profileUrl;
+plinkEl.onclick=function(){navigator.clipboard.writeText(profileUrl).then(()=>{const t=this.textContent;this.textContent="✅ تم النسخ!";setTimeout(()=>this.textContent=t,1500);});};
                 // Rank glow & border on avatar
                 const rankColors={Bronze:"#8d6e63",Silver:"#bdbdbd",Gold:"#ffb300",Plat:"#26a69a",Diamond:"#1e88e5",Champ:"#8e24aa",GC:"#d32f2f",SSL:"#7c4dff"};
                 const av=document.getElementById("uph-avatar");
