@@ -49,6 +49,13 @@ function checkAuth() {
                 document.getElementById("uph-name").textContent=tag;
                 document.getElementById("uph-sub").textContent=u.username||"مستخدم مسجل";
 const profileUrl=`${window.location.origin}/p/${encodeURIComponent(u.username)}`;
+                // Rank glow & border on avatar
+                const rankColors={Bronze:"#8d6e63",Silver:"#bdbdbd",Gold:"#ffb300",Plat:"#26a69a",Diamond:"#1e88e5",Champ:"#8e24aa",GC:"#d32f2f",SSL:"#7c4dff"};
+                const av=document.getElementById("uph-avatar");
+                const c=rankColors[rank]||rankColors.Bronze;
+                av.style.setProperty("--avatar-border",c);
+                av.style.setProperty("--avatar-glow",c+"44");
+                av.style.setProperty("--avatar-glow-soft",c+"22");
 const onlineDot=document.querySelector("#user-profile-header .dot");
 if(onlineDot) onlineDot.style.background="#00c853";
                 document.getElementById("uph-level").textContent="Level "+(Math.floor(ttl/5)+1);

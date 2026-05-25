@@ -498,7 +498,8 @@ h1 span {
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    border: 5px solid #0b1020;
+    border: 5px solid var(--avatar-border, #0b1020);
+    box-shadow: 0 0 20px var(--avatar-glow, transparent), 0 0 40px var(--avatar-glow-soft, transparent);
     object-fit: cover;
     display: flex;
     align-items: center;
@@ -507,6 +508,11 @@ h1 span {
     font-weight: 900;
     background: linear-gradient(135deg, #5b8cff, #7a5cff);
     color: #fff;
+    transition: box-shadow 0.3s, border-color 0.3s;
+}
+.profile-avatar-wrapper .profile-avatar:hover {
+    box-shadow: 0 0 30px var(--avatar-glow, transparent), 0 0 60px var(--avatar-glow-soft, transparent);
+    transform: scale(1.05);
 }
 .rank-badge {
     position: absolute;
