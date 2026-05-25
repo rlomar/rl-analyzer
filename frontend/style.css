@@ -551,25 +551,28 @@ h1 span {
     border-radius: 3px;
 }
 
-.stats-grid-cards {
+.stats-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
     margin-bottom: 28px;
 }
 .stat-card {
-    background: rgba(15,20,35,0.75);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 18px;
-    padding: 20px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 22px;
+    padding: 24px;
     text-align: center;
+    transition: 0.25s;
+}
+.stat-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(91,140,255,0.4);
+    box-shadow: 0 10px 30px rgba(91,140,255,0.15);
 }
 .stat-card span { font-size: 28px; display: block; margin-bottom: 6px; }
 .stat-card h3 { font-size: 13px; color: #8892b0; font-weight: 500; margin-bottom: 4px; }
 .stat-card strong { font-size: 24px; font-weight: 900; color: #fff; }
-@media (max-width: 600px) {
-    .stats-grid-cards { grid-template-columns: repeat(2, 1fr); }
-}
 
 .profile-avatar {
     width: 56px;
