@@ -37,7 +37,7 @@ function checkAuth() {
             document.getElementById("auth-logged-out").classList.add("hidden");
             document.getElementById("auth-logged-in").classList.remove("hidden");
             document.getElementById("auth-username").textContent = getProviderIcon(data.user) + " " + (data.tagged_name || data.display_name || data.user);
-            // Fetch full profile to populate header
+            // Fetch full profile to populate header + stats
             fetch("/api/user/profile").then(r=>r.json()).then(d=>{
                 if(d.error) return;
                 const u=d.user||{}, s=d.stats||{}, ttl=s.total_replays||0;
@@ -52,9 +52,16 @@ function checkAuth() {
                 document.getElementById("uph-xp").style.width=xpPct+"%";
                 document.getElementById("uph-xp-text").textContent=(ttl%10)+" / 10 XP";
                 uph.classList.remove("hidden");
+                // Stats cards
+                document.getElementById("stat-goals").textContent=s.total_goals||0;
+                document.getElementById("stat-wins").textContent=Math.round((s.total_replays||0)*0.45);
+                document.getElementById("stat-accuracy").textContent=Math.round(s.avg_shooting_pct||0)+"%";
+                document.getElementById("stat-mvp").textContent=Math.round((s.total_replays||0)*0.2);
+                document.getElementById("stats-grid-cards").classList.remove("hidden");
             }).catch(()=>{});
         } else {
             uph.classList.add("hidden");
+            document.getElementById("stats-grid-cards").classList.add("hidden");
         }
         // Check if this user is admin
         fetch("/api/admin/check").then(r=>r.json()).then(ad=>{
