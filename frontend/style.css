@@ -180,21 +180,24 @@ h1 span {
 }
 
 .drop-zone {
-    border: 2px dashed rgba(0, 119, 255, 0.3);
+    border: 2px dashed rgba(91, 140, 255, 0.4);
     border-radius: 16px;
     padding: 60px 20px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s ease;
-    background: rgba(0, 119, 255, 0.03);
+    background: linear-gradient(180deg, rgba(15,20,40,0.95), rgba(8,10,20,0.95));
+    transition: 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
 .drop-zone:hover,
 .drop-zone.dragover {
-    border-color: #0078ff;
-    background: rgba(0, 119, 255, 0.08);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(0, 119, 255, 0.15);
+    border-color: #5b8cff;
+    transform: translateY(-4px);
+    box-shadow:
+        0 0 25px rgba(91,140,255,0.25),
+        0 0 60px rgba(91,140,255,0.12);
 }
 
 /* ─── AUTH ──────────────────────────────── */
