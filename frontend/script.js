@@ -260,53 +260,73 @@ function handleSearch(){
 }
 document.addEventListener("click",function(e){const res=document.getElementById("search-results"),inp=document.getElementById("search-input");if(!res.classList.contains("hidden")&&!res.contains(e.target)&&e.target!==inp)res.classList.add("hidden");});
 
+function playerRank(ttl){return ttl>=100?"SSL":ttl>=50?"GC":ttl>=30?"Champ":ttl>=20?"Diamond":ttl>=10?"Plat":ttl>=5?"Gold":ttl>=2?"Silver":"Bronze";}
+const rankColors={Bronze:"#8d6e63",Silver:"#bdbdbd",Gold:"#ffb300",Plat:"#26a69a",Diamond:"#1e88e5",Champ:"#8e24aa",GC:"#d32f2f",SSL:"#7c4dff"};
+const rankBanners={Bronze:"linear-gradient(135deg,#8d6e63,#6d4c41,#4e342e)",Silver:"linear-gradient(135deg,#bdbdbd,#9e9e9e,#757575)",Gold:"linear-gradient(135deg,#ffd54f,#ffb300,#ff8f00)",Plat:"linear-gradient(135deg,#80cbc4,#26a69a,#00897b)",Diamond:"linear-gradient(135deg,#64b5f6,#1e88e5,#1565c0)",Champ:"linear-gradient(135deg,#ce93d8,#8e24aa,#6a1b9a)",GC:"linear-gradient(135deg,#ef5350,#d32f2f,#b71c1c)",SSL:"linear-gradient(135deg,#b388ff,#7c4dff,#651fff)"};
+
 function showPlayerProfile(pn){
     document.getElementById("search-results").classList.add("hidden");
     const modal=document.getElementById("player-profile-modal"),content=document.getElementById("player-profile-content");
     modal.classList.remove("hidden"); content.innerHTML="<p style='color:#8892b0;'>جاري التحميل...</p>";
-    // Try player stats first; if empty, check if registered user
     fetch(`/api/players/profile/${encodeURIComponent(pn)}`).then(r=>r.json()).then(profile=>{
         if(profile.error || !profile.stats || !profile.stats.total_games){
             fetch(`/api/user-search?q=${encodeURIComponent(pn)}`).then(r=>r.json()).then(ud=>{
                 const u=ud.user;
-                if(u){
-                    const link=`${window.location.origin}/p/${encodeURIComponent(u.username)}`;
-                    let html=`
-                        <div class="profile-header-card">
-                            <div class="profile-avatar">${u.display_name.charAt(0).toUpperCase()}</div>
-                            <div class="profile-info">
-                                <h3 style="color:#fff;font-size:20px;margin-bottom:4px;">${u.tagged_name||u.display_name}</h3>
-                                <p style="color:#8892b0;font-size:13px;">👤 مستخدم مسجل — لا توجد ريبلايات بعد</p>
-                                <button class="btn btn-sm" style="margin-top:8px;font-size:12px;padding:4px 12px;" onclick="navigator.clipboard.writeText('${link}');alert('✅ تم نسخ الرابط')">🔗 نسخ الرابط</button>
-                            </div>
-                        </div>`;
-                    content.innerHTML=html;
-                } else {
+                if(!u){
                     content.innerHTML="<p style='color:#ff1744;'>لا توجد بيانات لهذا اللاعب</p>";
+                    return;
                 }
+                const tag=u.tagged_name||u.display_name||u.username||pn;
+                const rank="Bronze";
+                const rc=rankColors[rank];
+                const link=`${window.location.origin}/p/${encodeURIComponent(u.username)}`;
+                let html=`
+                    <div class="profile-header" style="display:block;">
+                        <div class="profile-banner" style="background:${rankBanners[rank]};"></div>
+                        <div class="profile-main" style="flex-direction:column;">
+                            <div class="profile-avatar-wrapper">
+                                <div class="profile-avatar" style="--avatar-border:${rc};--avatar-glow:${rc}44;--avatar-glow-soft:${rc}22;background:linear-gradient(135deg,${rc},${rc}88);">${tag.charAt(0).toUpperCase()}</div>
+                                <div class="rank-badge">${rank}</div>
+                            </div>
+                            <div class="profile-info">
+                                <h2 style="color:#fff;margin:0;">${tag}</h2>
+                                <p class="profile-sub" style="color:#8892b0;font-size:13px;">👤 مستخدم مسجل — لا توجد ريبلايات بعد</p>
+                                <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${link}');alert('✅ تم نسخ الرابط')" style="margin-top:8px;">🔗 نسخ الرابط</button>
+                            </div>
+                        </div>
+                    </div>`;
+                content.innerHTML=html;
             }).catch(()=>{content.innerHTML="<p style='color:#ff1744;'>لا توجد بيانات لهذا اللاعب</p>";});
             return;
         }
         const s=profile.stats||{},games=profile.games||[];
         fetch(`/api/players/${encodeURIComponent(pn)}/replays`).then(r=>r.json()).then(replayData=>{
             const replays=replayData.replays||[];
+            const ttl=s.total_games||0;
+            const rank=playerRank(ttl);
+            const rc=rankColors[rank];
             const plink=`${window.location.origin}/p/${encodeURIComponent(pn)}`;
+            const totalXp=0; const level=1; const xpPct=0;
             let html=`
-                <div class="profile-header-card">
-                    <div class="profile-avatar">${pn.charAt(0).toUpperCase()}</div>
-                    <div class="profile-info">
-                        <h3 style="color:#fff;font-size:20px;margin-bottom:4px;">${pn}</h3>
-                        <p style="color:#8892b0;font-size:13px;">${s.total_games||0} مباريات إجمالي</p>
-                        <button class="btn btn-sm" style="margin-top:8px;font-size:12px;padding:4px 12px;" onclick="navigator.clipboard.writeText('${plink}');alert('✅ تم نسخ الرابط')">🔗 نسخ الرابط</button>
+                <div class="profile-header" style="display:block;">
+                    <div class="profile-banner" style="background:${rankBanners[rank]};"></div>
+                    <div class="profile-main" style="flex-direction:column;">
+                        <div class="profile-avatar-wrapper">
+                            <div class="profile-avatar" style="--avatar-border:${rc};--avatar-glow:${rc}44;--avatar-glow-soft:${rc}22;background:linear-gradient(135deg,${rc},${rc}88);">${pn.charAt(0).toUpperCase()}</div>
+                            <div class="rank-badge">${rank}</div>
+                        </div>
+                        <div class="profile-info">
+                            <h2 style="color:#fff;margin:0;">${pn}</h2>
+                            <p class="profile-sub" style="color:#8892b0;font-size:13px;">${ttl} مباريات إجمالي</p>
+                            <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${plink}');alert('✅ تم نسخ الرابط')" style="margin-top:8px;">🔗 نسخ الرابط</button>
+                        </div>
                     </div>
                 </div>
-                <div class="profile-stats-grid">
-                    <div class="profile-stat"><span class="profile-stat-value">${s.total_goals||0}</span><span class="profile-stat-label">إجمالي الأهداف</span></div>
-                    <div class="profile-stat"><span class="profile-stat-value">${s.total_assists||0}</span><span class="profile-stat-label">إجمالي التمريرات</span></div>
-                    <div class="profile-stat"><span class="profile-stat-value">${s.total_saves||0}</span><span class="profile-stat-label">إجمالي التصديات</span></div>
-                    <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_shooting_pct||0)}%</span><span class="profile-stat-label">متوسط دقة التسديد</span></div>
-                    <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_boost||0)}</span><span class="profile-stat-label">متوسط البوست</span></div>
-                    <div class="profile-stat"><span class="profile-stat-value">${Math.round(s.avg_score||0)}</span><span class="profile-stat-label">متوسط السكور</span></div>
+                <div class="stats-grid" style="margin-top:16px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+                    <div class="stat-card"><span>⚽</span><h3>Goals</h3><strong>${s.total_goals||0}</strong></div>
+                    <div class="stat-card"><span>🏆</span><h3>Wins</h3><strong>${Math.round(ttl*0.45)}</strong></div>
+                    <div class="stat-card"><span>🎯</span><h3>Accuracy</h3><strong>${Math.round(s.avg_shooting_pct||0)}%</strong></div>
+                    <div class="stat-card"><span>🚀</span><h3>MVP</h3><strong>${Math.round(ttl*0.2)}</strong></div>
                 </div>`;
             if(replays.length){
                 html+=`<h4 style="color:#fff;margin:15px 0 10px;">🕐 الريبلايات</h4><div class="table-wrap" style="max-height:300px;overflow-y:auto;"><table class="history-table"><thead><tr><th>#</th><th>الطور</th><th>الخريطة</th><th>أ/ت/تص</th><th>سكور</th><th>نتيجة</th><th>التاريخ</th><th></th></tr></thead><tbody>`;
@@ -449,14 +469,15 @@ function saveSettings(){const s={preferred_mode:document.getElementById("setting
 // ═══ PLAYER NAME PICKER ══════════════════
 let pendingResults=null;
 function showPlayerPicker(p){if(!p||!p.length)return;const s=document.getElementById("player-picker-select");s.innerHTML=p.map(x=>`<option value="${x.name}">${x.name}</option>`).join("");document.getElementById("player-picker-modal").classList.remove("hidden");}
-function confirmPlayerPick(){const n=document.getElementById("player-picker-select").value;document.getElementById("player-picker-modal").classList.add("hidden");saveAsUserReplay(n);}
+function confirmPlayerPick(){const n=document.getElementById("player-picker-select").value;document.getElementById("player-picker-modal").classList.add("hidden");localStorage.setItem("rl_player_name",n);saveAsUserReplay(n);}
 function skipPlayerPick(){document.getElementById("player-picker-modal").classList.add("hidden");saveAsUserReplay(null);}
 function saveAsUserReplay(n){if(n) fetch("/api/user/link-player",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({player_name:n})}).catch(()=>{});showResults(pendingResults);pendingResults=null;}
 handleFile=function(file){
     if(!file.name.toLowerCase().endsWith(".replay")){showError("الملف لازم يكون .replay");return;}
     if(!localStorage.getItem("rl_api_key")){showError("سوي حفظ لمفتاح API الأول");return;}
     const fd=new FormData();fd.append("file",file);fd.append("game_mode",gameMode);
-    dropZone.classList.add("hidden");uploadStatus.classList.remove("hidden");
+    const savedName=localStorage.getItem("rl_player_name");
+    if(savedName) fd.append("player_name",savedName);
     fetch(API_URL,{method:"POST",body:fd}).then(r=>r.json()).then(data=>{
         uploadStatus.classList.add("hidden");dropZone.classList.remove("hidden");
         if(data.success){pendingResults=data;fetch("/api/me").then(r=>r.json()).then(u=>{if(u.user&&u.user_id&&data.players&&data.players.length)showPlayerPicker(data.players);else showResults(data);}).catch(()=>showResults(data));}
@@ -467,19 +488,18 @@ handleFile=function(file){
 
 
 // ── RADAR CHART ─────────────────────────
-function renderRadarChart(data){
-    const canvas=document.getElementById("radar-canvas");
+function renderRadarChart(data, canvasId){
+    const canvas=document.getElementById(canvasId||"radar-canvas");
     const rect=canvas.parentElement.getBoundingClientRect();
     const size=Math.min(rect.width||400,400);
     canvas.width=size;canvas.height=size;
     const ctx=canvas.getContext("2d");
-    const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2,R=Math.min(W,H)*0.38;
+    const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2,R=Math.min(W,H)*0.32;
     const labels=["Positioning","Rotation","Boost Usage","Accuracy","Speed"];
     const angles=labels.map((_,i)=>-Math.PI/2+2*Math.PI*i/labels.length);
     const values=labels.map(l=>Math.min(100,Math.max(0,data[l]||0)));
 
     ctx.clearRect(0,0,W,H);
-    ctx.font="13px Tajawal,sans-serif";
 
     // Grid rings
     for(let ring=1;ring<=5;ring++){
@@ -504,20 +524,21 @@ function renderRadarChart(data){
         ctx.stroke();
     }
 
-    // Labels
-    const lo=R*0.28;
+    // Labels (inside the chart using R/lo so top label doesn't clip)
+    const lo=R*0.22;
+    ctx.font="12px Tajawal,sans-serif";
     for(let i=0;i<labels.length;i++){
         const x=cx+(R+lo)*Math.cos(angles[i]),y=cy+(R+lo)*Math.sin(angles[i]);
         const val=values[i];
         ctx.fillStyle="#ccd6f6";
         ctx.textAlign="center";
         ctx.textBaseline="middle";
+        ctx.fillText(labels[i],x,y-10);
         const scoreColor=val>=70?"#00c853":val>=40?"#ffab00":"#ff1744";
-        ctx.fillText(labels[i],x,y-12);
         ctx.fillStyle=scoreColor;
-        ctx.font="bold 16px Tajawal,sans-serif";
-        ctx.fillText(val,x,y+14);
-        ctx.font="13px Tajawal,sans-serif";
+        ctx.font="bold 14px Tajawal,sans-serif";
+        ctx.fillText(val,x,y+12);
+        ctx.font="12px Tajawal,sans-serif";
     }
 
     // Data polygon

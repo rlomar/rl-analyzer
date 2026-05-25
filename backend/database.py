@@ -114,7 +114,7 @@ def search_user_exact(query):
     conn = get_db()
     like = f"%{query}%"
     like_clause = "ILIKE %s" if USE_PG else "LIKE ? COLLATE NOCASE"
-    sql = f"SELECT id, username, display_name, hash_tag FROM users WHERE COALESCE(display_name, '') {like_clause} OR username {like_clause} LIMIT 1" if USE_PG else "SELECT id, username, display_name, hash_tag FROM users WHERE IFNULL(display_name, '') LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE LIMIT 1"
+    sql = f"SELECT id, username, display_name, hash_tag, xp FROM users WHERE COALESCE(display_name, '') {like_clause} OR username {like_clause} LIMIT 1" if USE_PG else "SELECT id, username, display_name, hash_tag, xp FROM users WHERE IFNULL(display_name, '') LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE LIMIT 1"
     row = _c(conn, sql, (like, like)).fetchone()
     conn.close()
     return dict(row) if row else None
@@ -122,7 +122,7 @@ def search_user_exact(query):
 def get_user_by_display_or_username(name):
     conn = get_db()
     where = "display_name = %s OR username = %s" if USE_PG else "display_name = ? COLLATE NOCASE OR username = ? COLLATE NOCASE"
-    sql = f"SELECT id, username, display_name, hash_tag, avatar, bio, country, primary_platform FROM users WHERE {where} LIMIT 1"
+    sql = f"SELECT id, username, display_name, hash_tag, avatar, bio, country, primary_platform, xp FROM users WHERE {where} LIMIT 1"
     row = _c(conn, sql, (name, name)).fetchone()
     conn.close()
     return dict(row) if row else None

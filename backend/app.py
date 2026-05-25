@@ -597,6 +597,7 @@ def api_user_search():
             "display_name": display,
             "hash_tag": tag,
             "tagged_name": f"{display}#{tag}" if tag else display,
+            "xp": r.get("xp", 0),
         }})
     return jsonify({"user": None})
 
@@ -634,6 +635,7 @@ def api_unified_profile(name):
             "bio": r.get("bio"),
             "country": r.get("country"),
             "primary_platform": r.get("primary_platform"),
+            "xp": r.get("xp", 0),
         })
     return jsonify({"error": "لا توجد بيانات"}), 404
 
@@ -670,6 +672,23 @@ def api_link_player():
     if not player_name:
         return jsonify({"error": "الاسم مطلوب"}), 400
     update_last_replay_player_name(session["user_id"], player_name)
+    # Award XP for the linked replay
+    try:
+        uid = session["user_id"]
+        from database import _c as _gc
+        conn = get_db()
+        row = _gc(conn, """
+            SELECT ps.goals, ps.assists, ps.saves, ps.score, r.blue_goals, r.orange_goals, ps.team
+            FROM replays r JOIN player_stats ps ON ps.replay_id = r.id
+            WHERE r.user_id = %s AND r.user_player_name = %s AND ps.player_name = %s
+            ORDER BY r.uploaded_at DESC LIMIT 1
+        """, (uid, player_name, player_name)).fetchone()
+        conn.close()
+        if row:
+            won = (row["team"] == "blue" and row["blue_goals"] > row["orange_goals"]) or (row["team"] == "orange" and row["orange_goals"] > row["blue_goals"])
+            award_xp(uid, goals=row["goals"] or 0, assists=row["assists"] or 0, saves=row["saves"] or 0, score=row["score"] or 0, won=won)
+    except Exception as e:
+        print("XP award after link error:", e)
     return jsonify({"success": True})
 
 @app.route("/api/user/achievements", methods=["GET"])
