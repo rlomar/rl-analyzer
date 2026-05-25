@@ -16,19 +16,21 @@
                     <h1>RL <span>Coach</span></h1>
                 </div>
                 <div id="auth-area">
-                    <!-- Logged Out -->
                     <div id="auth-logged-out" class="auth-buttons">
-                        <button class="btn btn-auth btn-auth-primary" onclick="showAuthModal('login')">تسجيل دخول</button>
-                        <button class="btn btn-auth btn-auth-secondary" onclick="showAuthModal('register')">حساب جديد</button>
+                        <button class="btn btn-auth btn-steam" onclick="steamLogin()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-left:5px;"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12c0 5 3.92 9.06 8.86 9.36l2.68-7.16a3.84 3.84 0 0 1-2.2-3.55c0-2.13 1.72-3.85 3.85-3.85 1.5 0 2.8.86 3.44 2.11l6.78 2.73C22.6 10.4 23 8.6 23 6.73 23 4.11 20.89 2 18.27 2H12z"/></svg>
+                            Steam
+                        </button>
+                        <button class="btn btn-auth btn-epic" onclick="epicLogin()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;margin-left:5px;"><path fill="currentColor" d="M19.85 2.82L12 10.67l-7.85-7.85C2.5 4.5 2 6.18 2 8c0 5.52 4.48 10 10 10s10-4.48 10-10c0-1.82-.5-3.5-2.15-5.18z"/></svg>
+                            Epic Games
+                        </button>
                     </div>
-
-                    <!-- Logged In -->
                     <div id="auth-logged-in" class="auth-buttons hidden">
                         <button class="btn btn-auth btn-auth-hamburger" id="menu-toggle" onclick="toggleUserMenu()">
                             <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
                         </button>
                         <span id="auth-username" class="auth-username"></span>
-                        <!-- Dropdown Menu -->
                         <div id="user-menu" class="user-menu hidden">
                             <button onclick="showProfile()">
                                 <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
@@ -48,47 +50,18 @@
                 </div>
             </div>
             <p class="subtitle">ارفع الريبلاي وحلل أدائك مع نصائح ذكية</p>
-
-            <!-- Search Bar -->
             <div class="search-bar">
                 <svg viewBox="0 0 24 24" width="18" height="18" style="flex-shrink:0;color:#5a6a8a;"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                <input type="text" id="search-input" placeholder="ابحث عن لاعب (اسم أو هاشتاق#1234)" oninput="handleSearch()">
+                <input type="text" id="search-input" placeholder="ابحث عن لاعب..." oninput="handleSearch()">
                 <div id="search-results" class="search-results hidden"></div>
             </div>
         </header>
-
-        <!-- Auth Modal (Login/Register) -->
-        <div id="auth-modal" class="modal hidden">
-            <div class="modal-content">
-                <span class="modal-close" onclick="closeAuthModal()">✕</span>
-                <h3 id="auth-modal-title" style="margin-bottom:15px;color:#fff;"></h3>
-                <form id="auth-form" onsubmit="return handleAuth(event)">
-                    <input type="text" id="auth-input-username" placeholder="اسم المستخدم" required style="width:100%;padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;margin-bottom:10px;direction:rtl;">
-                    <input type="password" id="auth-input-password" placeholder="كلمة المرور" required style="width:100%;padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;margin-bottom:10px;direction:rtl;">
-                    <p id="auth-error" style="color:#ff1744;font-size:13px;margin-bottom:10px;display:none;"></p>
-                    <button type="submit" class="btn" style="width:100%;" id="auth-submit-btn"></button>
-                </form>
-                <div class="auth-modal-separator"><span>أو سجل عبر</span></div>
-                <div class="auth-modal-social">
-                    <button class="btn btn-steam" onclick="steamLogin()" style="flex:1;font-size:13px;padding:10px;">
-                        <svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:middle;margin-left:4px;"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12c0 5 3.92 9.06 8.86 9.36l2.68-7.16a3.84 3.84 0 0 1-2.2-3.55c0-2.13 1.72-3.85 3.85-3.85 1.5 0 2.8.86 3.44 2.11l6.78 2.73C22.6 10.4 23 8.6 23 6.73 23 4.11 20.89 2 18.27 2H12z"/></svg>
-                        Steam
-                    </button>
-                    <button class="btn btn-epic" onclick="epicLogin()" style="flex:1;font-size:13px;padding:10px;">
-                        <svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:middle;margin-left:4px;"><path fill="currentColor" d="M19.85 2.82L12 10.67l-7.85-7.85C2.5 4.5 2 6.18 2 8c0 5.52 4.48 10 10 10s10-4.48 10-10c0-1.82-.5-3.5-2.15-5.18z"/></svg>
-                        Epic Games
-                    </button>
-                </div>
-            </div>
-        </div>
 
         <!-- Profile Modal -->
         <div id="profile-modal" class="modal hidden">
             <div class="modal-content modal-content-wide">
                 <span class="modal-close" onclick="closeProfile()">✕</span>
-                <div id="profile-content">
-                    <p>جاري التحميل...</p>
-                </div>
+                <div id="profile-content"><p>جاري التحميل...</p></div>
             </div>
         </div>
 
@@ -100,13 +73,11 @@
                     <svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align:middle;margin-left:8px;"><path fill="currentColor" d="M19.14 12.94c.04-.32.07-.64.07-.94s-.03-.62-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.49.49 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.32-.07.64-.07.94s.03.62.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58z"/></svg>
                     الإعدادات
                 </h3>
-                <div id="settings-content">
-                    <p style="color:#8892b0;">جاري التحميل...</p>
-                </div>
+                <div id="settings-content"><p style="color:#8892b0;">جاري التحميل...</p></div>
             </div>
         </div>
 
-        <!-- Player Name Picker (after upload) -->
+        <!-- Player Name Picker -->
         <div id="player-picker-modal" class="modal hidden">
             <div class="modal-content" style="max-width:450px;">
                 <h3 style="margin-bottom:15px;color:#fff;">اختر اسمك في الريبلاي</h3>
@@ -121,9 +92,7 @@
         <div id="player-profile-modal" class="modal hidden">
             <div class="modal-content modal-content-wide">
                 <span class="modal-close" onclick="closePlayerProfile()">✕</span>
-                <div id="player-profile-content">
-                    <p>جاري التحميل...</p>
-                </div>
+                <div id="player-profile-content"><p>جاري التحميل...</p></div>
             </div>
         </div>
 
@@ -142,26 +111,10 @@
                 <div class="mode-selector">
                     <h3>🎮 اختر نمط اللعب</h3>
                     <div class="mode-options">
-                        <label class="mode-option selected" data-mode="1v1">
-                            <input type="radio" name="game-mode" value="1v1" checked hidden>
-                            <span class="mode-icon">🥊</span>
-                            <span class="mode-label">1v1</span>
-                        </label>
-                        <label class="mode-option" data-mode="2v2">
-                            <input type="radio" name="game-mode" value="2v2" hidden>
-                            <span class="mode-icon">🤝</span>
-                            <span class="mode-label">2v2</span>
-                        </label>
-                        <label class="mode-option" data-mode="3v3">
-                            <input type="radio" name="game-mode" value="3v3" hidden>
-                            <span class="mode-icon">👥</span>
-                            <span class="mode-label">3v3</span>
-                        </label>
-                        <label class="mode-option" data-mode="scrim">
-                            <input type="radio" name="game-mode" value="scrim" hidden>
-                            <span class="mode-icon">🏆</span>
-                            <span class="mode-label">Scrim</span>
-                        </label>
+                        <label class="mode-option selected" data-mode="1v1"><input type="radio" name="game-mode" value="1v1" checked hidden><span class="mode-icon">🥊</span><span class="mode-label">1v1</span></label>
+                        <label class="mode-option" data-mode="2v2"><input type="radio" name="game-mode" value="2v2" hidden><span class="mode-icon">🤝</span><span class="mode-label">2v2</span></label>
+                        <label class="mode-option" data-mode="3v3"><input type="radio" name="game-mode" value="3v3" hidden><span class="mode-icon">👥</span><span class="mode-label">3v3</span></label>
+                        <label class="mode-option" data-mode="scrim"><input type="radio" name="game-mode" value="scrim" hidden><span class="mode-icon">🏆</span><span class="mode-label">Scrim</span></label>
                     </div>
                 </div>
                 <div id="drop-zone" class="drop-zone">
@@ -184,23 +137,13 @@
                     <h2>معلومات المباراة</h2>
                     <div id="game-details" class="game-details"></div>
                 </div>
-
                 <div id="trends-section" class="hidden"></div>
-
                 <div id="players-results"></div>
-
                 <div id="team-section" class="hidden"></div>
-
                 <div id="history-section" class="hidden">
-                    <div class="card">
-                        <h2>📊 الريبلايات السابقة</h2>
-                        <div id="history-content"></div>
-                    </div>
+                    <div class="card"><h2>📊 الريبلايات السابقة</h2><div id="history-content"></div></div>
                 </div>
-
-                <div class="card disclaimer-card">
-                    <p>⚠️ التحليل يعتمد على الإحصائيات المتوفرة في الريبلاي. النصائح عامة ولزيادة الدقة يفضل استخدام تحليلات متقدمة.</p>
-                </div>
+                <div class="card disclaimer-card"><p>⚠️ التحليل يعتمد على الإحصائيات المتوفرة في الريبلاي. النصائح عامة ولزيادة الدقة يفضل استخدام تحليلات متقدمة.</p></div>
             </section>
 
             <section id="error-section" class="hidden">
@@ -213,9 +156,7 @@
             </section>
         </main>
 
-        <footer>
-            <p>RL Analyzer — طُور لعشاق Rocket League</p>
-        </footer>
+        <footer><p>RL Analyzer — طُور لعشاق Rocket League</p></footer>
     </div>
 
     <!-- AI Coach -->
@@ -224,10 +165,7 @@
         <div id="coach-header">
             <div id="coach-header-info">
                 <span id="coach-avatar">🏆</span>
-                <div>
-                    <div id="coach-name">RL Coach</div>
-                    <div id="coach-status">متصل</div>
-                </div>
+                <div><div id="coach-name">RL Coach</div><div id="coach-status">متصل</div></div>
             </div>
             <span id="coach-beta">تحت التطوير</span>
             <button id="coach-close">✕</button>

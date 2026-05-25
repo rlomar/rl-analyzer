@@ -110,7 +110,7 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS replays (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            replay_id TEXT,
+            replay_id TEXT UNIQUE,
             game_mode TEXT,
             map_name TEXT,
             duration REAL,
@@ -122,6 +122,7 @@ def init_db():
             orange_goals INTEGER DEFAULT 0,
             user_id INTEGER,
             user_player_name TEXT,
+            file_path TEXT,
             uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS player_stats (
@@ -196,9 +197,25 @@ def init_db():
     conn.commit()
     conn.close()
 
-def save_replay(replay_data, game_mode, players_analysis, user_id=None, user_player_name=None):
+def get_replay_by_id(replay_id):
     conn = get_db()
     cursor = conn.cursor()
+    cursor.execute("SELECT * FROM replays WHERE replay_id = ?", (replay_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def save_replay(replay_data, game_mode, players_analysis, user_id=None, user_player_name=None, file_path=None):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Check if replay already exists (duplicate)
+    replay_id = replay_data.get("id", "")
+    if replay_id:
+        existing = cursor.execute("SELECT id FROM replays WHERE replay_id = ?", (replay_id,)).fetchone()
+        if existing:
+            conn.close()
+            return existing[0]
 
     # Calculate team goals from player stats (more reliable than API)
     team_goals = {"blue": 0, "orange": 0}
@@ -209,10 +226,10 @@ def save_replay(replay_data, game_mode, players_analysis, user_id=None, user_pla
     cursor.execute("""
         INSERT INTO replays (replay_id, game_mode, map_name, duration, overtime,
                             playlist, blue_name, orange_name, blue_goals, orange_goals,
-                            user_id, user_player_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            user_id, user_player_name, file_path)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        replay_data.get("id", ""),
+        replay_id,
         game_mode,
         replay_data.get("map_name", ""),
         replay_data.get("duration", 0),
@@ -224,6 +241,7 @@ def save_replay(replay_data, game_mode, players_analysis, user_id=None, user_pla
         team_goals.get("orange", 0),
         user_id,
         user_player_name,
+        file_path,
     ))
     replay_pk = cursor.lastrowid
 
@@ -431,6 +449,7 @@ def search_players(query, limit=20):
     conn = get_db()
     cursor = conn.cursor()
     like = f"%{query}%"
+    # Use COLLATE NOCASE for case-insensitive search (handles Arabic)
     cursor.execute("""
         SELECT DISTINCT ps.player_name,
                COUNT(r.id) AS total_games,
@@ -440,11 +459,35 @@ def search_players(query, limit=20):
                AVG(ps.score) AS avg_score
         FROM player_stats ps
         JOIN replays r ON ps.replay_id = r.id
-        WHERE ps.player_name LIKE ?
+        WHERE ps.player_name LIKE ? COLLATE NOCASE
         GROUP BY ps.player_name
         ORDER BY total_games DESC
         LIMIT ?
     """, (like, limit))
+    rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return rows
+
+def get_replay_file_path(replay_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT file_path, map_name FROM replays WHERE replay_id = ?", (replay_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def get_replays_for_player(player_name, limit=50):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT r.replay_id, r.map_name, r.game_mode, r.uploaded_at,
+               r.blue_goals, r.orange_goals,
+               ps.goals, ps.assists, ps.saves, ps.score, ps.team
+        FROM player_stats ps
+        JOIN replays r ON ps.replay_id = r.id
+        WHERE ps.player_name = ?
+        ORDER BY r.uploaded_at DESC LIMIT ?
+    """, (player_name, limit))
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
     return rows

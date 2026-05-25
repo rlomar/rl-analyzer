@@ -1,19 +1,34 @@
-import os, json, tempfile, time
-from flask import Flask, request, jsonify, send_from_directory, session
+import os, json, tempfile, time, shutil, requests as requests_lib
+from datetime import timedelta
+from flask import Flask, request, jsonify, send_from_directory, session, send_file
 from flask_cors import CORS
 from analyzer import RocketLeagueAnalyzer
-from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, set_user_display_name, update_last_replay_player_name
+from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name
 from urllib.parse import urlencode
 from trends import analyze_trends, generate_scrim_team_analysis
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
+REPLAY_STORAGE = os.path.join(BASE_DIR, "backend", "replays")
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
-app.secret_key = os.urandom(24).hex()
+# Persistent secret key — generated once, saved to file
+SECRET_KEY_FILE = os.path.join(BASE_DIR, "backend", ".secret_key")
+if os.path.exists(SECRET_KEY_FILE):
+    with open(SECRET_KEY_FILE, "r") as f:
+        app.secret_key = f.read().strip()
+else:
+    app.secret_key = os.urandom(32).hex()
+    os.makedirs(os.path.dirname(SECRET_KEY_FILE), exist_ok=True)
+    with open(SECRET_KEY_FILE, "w") as f:
+        f.write(app.secret_key)
+# Keep sessions alive across browser restarts
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 CORS(app, supports_credentials=True)
 
 UPLOAD_FOLDER = tempfile.gettempdir()
+os.makedirs(REPLAY_STORAGE, exist_ok=True)
 BALLCHASING_API = "https://ballchasing.com/api"
 
 HEADERS = {}
@@ -41,6 +56,23 @@ MODE_LABELS = {"1v1": "فردي 1v1", "2v2": "زوجي 2v2", "3v3": "فريق 3v
 init_db()
 
 STEAM_OPENID = "https://steamcommunity.com/openid/login"
+STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "")
+
+def get_steam_display_name(steam_id):
+    if not STEAM_API_KEY:
+        return None
+    try:
+        r = requests_lib.get(
+            f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/",
+            params={"key": STEAM_API_KEY, "steamids": steam_id}
+        )
+        data = r.json()
+        players = data.get("response", {}).get("players", [])
+        if players:
+            return players[0].get("personaname")
+    except Exception:
+        pass
+    return None
 
 def get_db_user_id(username):
     from database import get_db
@@ -75,19 +107,78 @@ def api_auth_steam_callback():
             if user:
                 session["user"] = user["username"]
                 session["user_id"] = user["id"]
+                session.permanent = True
             else:
                 uid = create_user(f"steam_{sid}", steam_id=sid)
                 if uid:
                     session["user"] = f"steam_{sid}"
                     session["user_id"] = uid
+                    session.permanent = True
+                    # Set display name from Steam API
+                    steam_name = get_steam_display_name(sid)
+                    if steam_name:
+                        set_user_display_name(uid, steam_name)
             return '<script>if(window.opener){window.opener.postMessage("steam-login-success","*");window.close()}else{location="/"}</script>'
     return '<script>if(window.opener)window.close();else location="/"</script>'
 
-# ── EPIC GAMES AUTH ──────────────────────────
+# ── EPIC GAMES OAUTH ──────────────────────────
+EPIC_CLIENT_ID = os.environ.get("EPIC_CLIENT_ID", "")
+EPIC_CLIENT_SECRET = os.environ.get("EPIC_CLIENT_SECRET", "")
+
 @app.route("/api/auth/epic")
 def api_auth_epic():
     base = request.host_url.rstrip("/")
+    if EPIC_CLIENT_ID:
+        params = urlencode({
+            "client_id": EPIC_CLIENT_ID,
+            "redirect_uri": f"{base}/api/auth/epic/callback",
+            "response_type": "code",
+            "scope": "basic_profile",
+        })
+        return jsonify({"url": f"https://accounts.epicgames.com/authorize?{params}"})
+    # Fallback: show Epic display name input page
     return jsonify({"url": f"{base}/api/auth/epic-form"})
+
+@app.route("/api/auth/epic/callback")
+def api_auth_epic_callback():
+    code = request.args.get("code")
+    if code and EPIC_CLIENT_ID and EPIC_CLIENT_SECRET:
+        base = request.host_url.rstrip("/")
+        try:
+            tr = requests_lib.post("https://accounts.epicgames.com/token", data={
+                "client_id": EPIC_CLIENT_ID,
+                "client_secret": EPIC_CLIENT_SECRET,
+                "redirect_uri": f"{base}/api/auth/epic/callback",
+                "grant_type": "authorization_code",
+                "code": code,
+            })
+            token_data = tr.json()
+            access_token = token_data.get("access_token")
+            if access_token:
+                ur = requests_lib.get("https://api.epicgames.com/epic/id/v1/accounts/me",
+                    headers={"Authorization": f"Bearer {access_token}"})
+                user_info = ur.json()
+                epic_id = user_info.get("id", "")
+                display_name = user_info.get("displayName", "")
+                if epic_id:
+                    user = get_user_by_epic(epic_id)
+                    if user:
+                        session["user"] = user["username"]
+                        session["user_id"] = user["id"]
+                        session.permanent = True
+                    else:
+                        uid = create_user(f"epic_{epic_id}", epic_id=epic_id)
+                        if uid:
+                            session["user"] = f"epic_{epic_id}"
+                            session["user_id"] = uid
+                            session.permanent = True
+                            if display_name:
+                                set_user_display_name(uid, display_name)
+                    return '<script>if(window.opener){window.opener.postMessage("epic-login-success","*");window.close()}else{location="/"}</script>'
+        except Exception:
+            pass
+        return '<script>alert("فشل تسجيل Epic Games");window.close()</script>'
+    return '<script>if(window.opener)window.close();else location="/"</script>'
 
 @app.route("/api/auth/epic-form")
 def epic_login_form():
@@ -98,9 +189,10 @@ def epic_login_form():
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family:Tahoma,Arial,sans-serif; background:#0a0e17; color:#e0e0e0; display:flex; align-items:center; justify-content:center; min-height:100vh; }
-        .card { background:#131a2b; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:30px; width:340px; text-align:center; }
+        .card { background:#131a2b; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:30px; width:360px; text-align:center; }
         .card h2 { margin-bottom:8px; color:#fff; font-size:20px; }
-        .card p { color:#8892b0; font-size:13px; margin-bottom:20px; }
+        .card p { color:#8892b0; font-size:13px; margin-bottom:8px; }
+        .card .note { color:#5a6a8a; font-size:11px; margin-bottom:16px; }
         input { width:100%; padding:12px 16px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.3); color:#fff; font-size:14px; margin-bottom:12px; text-align:center; }
         button { width:100%; padding:12px; border-radius:10px; border:none; background:linear-gradient(135deg,#2a2a2a,#404040); color:#fff; font-size:14px; font-weight:700; cursor:pointer; }
         button:hover { background:linear-gradient(135deg,#404040,#555); }
@@ -108,8 +200,9 @@ def epic_login_form():
     </style>
     </head><body>
     <div class="card">
-        <h2>⭐ تسجيل عبر Epic Games</h2>
+        <h2>⭐ Epic Games</h2>
         <p>اكتب اسم المستخدم في Epic Games</p>
+        <p class="note">هذا خيار احتياطي. عشان تربط الحساب رسمياً،<br>ضف EPIC_CLIENT_ID و EPIC_CLIENT_SECRET في البيئة.</p>
         <form action="/api/auth/epic/complete" method="POST" id="epic-form">
             <input type="text" name="epic_name" placeholder="Epic Games display name" required>
             <p class="error" id="epic-error"></p>
@@ -154,11 +247,13 @@ def epic_login_complete():
     if user:
         session["user"] = user["username"]
         session["user_id"] = user["id"]
+        session.permanent = True
     else:
         uid = create_user(f"epic_{epic_name.replace(' ','_')}", epic_id=epic_name)
         if uid:
             session["user"] = f"epic_{epic_name.replace(' ','_')}"
             session["user_id"] = uid
+            session.permanent = True
             set_user_display_name(uid, epic_name)
         else:
             return jsonify({"error": "فشل إنشاء الحساب"}), 500
@@ -218,33 +313,7 @@ def api_update_profile():
     update_user_profile(session["user_id"], display_name=display_name or None, bio=bio or None)
     return jsonify({"success": True})
 
-# ── PASSWORD AUTH ──────────────────────────
-@app.route("/api/register", methods=["POST"])
-def api_register():
-    data = request.get_json()
-    username = data.get("username", "").strip()
-    password = data.get("password", "").strip()
-    if len(username) < 3: return jsonify({"error": "اسم المستخدم ٣ أحرف على الأقل"}), 400
-    if len(password) < 4: return jsonify({"error": "كلمة المرور ٤ أحرف على الأقل"}), 400
-    uid = create_user(username, password)
-    if uid:
-        session["user"] = username
-        session["user_id"] = uid
-        return jsonify({"success": True, "user": username})
-    return jsonify({"error": "اسم المستخدم موجود مسبقاً"}), 409
-
-@app.route("/api/login", methods=["POST"])
-def api_login():
-    data = request.get_json()
-    username = data.get("username", "").strip()
-    password = data.get("password", "").strip()
-    if verify_user(username, password):
-        info = get_db_user_id(username)
-        session["user"] = username
-        session["user_id"] = info["id"] if info else None
-        return jsonify({"success": True, "user": username})
-    return jsonify({"error": "اسم المستخدم أو كلمة المرور خطأ"}), 401
-
+# ── LOGOUT ──────────────────────────────────
 @app.route("/api/logout", methods=["POST"])
 def api_logout():
     session.pop("user", None)
@@ -296,29 +365,71 @@ def analyze_replay():
     file.save(filepath)
 
     try:
-        import requests
-    except ImportError:
-        return jsonify({"error": "requests"}), 500
-
-    try:
+        # Check if this replay was already uploaded (by replay_id returned from Ballchasing)
         with open(filepath, "rb") as f:
-            r = requests.post(
+            r_post = requests_lib.post(
                 f"{BALLCHASING_API}/v2/upload",
                 headers={"Authorization": HEADERS["Authorization"]},
                 files={"file": (file.filename, f, "application/octet-stream")}
             )
-        if r.status_code == 409:
-            replay_id = r.json().get("id")
-        elif r.status_code in (200, 201):
-            replay_id = r.json().get("id")
+        if r_post.status_code == 409:
+            replay_id = r_post.json().get("id")
+        elif r_post.status_code in (200, 201):
+            replay_id = r_post.json().get("id")
         else:
-            return jsonify({"error": f"Ballchasing API: {r.status_code} {r.text[:200]}"}), 500
+            return jsonify({"error": f"Ballchasing API: {r_post.status_code} {r_post.text[:200]}"}), 500
         if not replay_id:
             return jsonify({"error": "ما لقيت replay ID"}), 500
 
+        # === DUPLICATE CHECK ===
+        existing = get_replay_by_id(replay_id)
+        if existing:
+            # Replay already analyzed — return same results without re-saving
+            # Re-analyze from the cached Ballchasing data for fresh tips
+            for _ in range(10):
+                time.sleep(2)
+                r2 = requests_lib.get(
+                    f"{BALLCHASING_API}/replays/{replay_id}",
+                    headers={"Authorization": HEADERS["Authorization"]}
+                )
+                if r2.status_code == 200:
+                    data = r2.json()
+                    if data.get("status") == "ok" or "goals" in data.get("blue", {}):
+                        break
+            actual_mode = detect_game_mode(data)
+            analyzer = RocketLeagueAnalyzer(data, game_mode if game_mode == actual_mode else actual_mode)
+            results = analyzer.analyze()
+            game_info = {
+                "map": data.get("map_name", "Unknown"),
+                "duration": data.get("duration", 0),
+                "overtime": data.get("overtime", False),
+                "playlist": data.get("playlist_name", "Unknown"),
+                "blue_name": data.get("blue", {}).get("name", "Blue"),
+                "orange_name": data.get("orange", {}).get("name", "Orange"),
+                "blue_goals": data.get("blue", {}).get("goals", 0),
+                "orange_goals": data.get("orange", {}).get("goals", 0),
+            }
+            trends_data = {}
+            for p in results:
+                summary, _ = analyze_trends(p["name"], game_mode)
+                if summary:
+                    trends_data[p["name"]] = summary
+            team_analysis = None
+            if game_mode in ("scrim", "3v3"):
+                team_analysis = generate_scrim_team_analysis(results, game_info)
+            return jsonify({
+                "success": True,
+                "replay_id": replay_id,
+                "game_info": game_info,
+                "players": results,
+                "trends": trends_data,
+                "team_analysis": team_analysis,
+                "duplicate": True,
+            })
+
         for _ in range(30):
             time.sleep(2)
-            r2 = requests.get(
+            r2 = requests_lib.get(
                 f"{BALLCHASING_API}/replays/{replay_id}",
                 headers={"Authorization": HEADERS["Authorization"]}
             )
@@ -349,10 +460,15 @@ def analyze_replay():
             "orange_goals": data.get("orange", {}).get("goals", 0),
         }
 
+        # Save a copy of the replay file
+        replay_filename = f"{replay_id}.replay"
+        replay_filepath = os.path.join(REPLAY_STORAGE, replay_filename)
+        shutil.copy2(filepath, replay_filepath)
+
         # Save to database
         user_id = session.get("user_id")
         user_player_name = request.form.get("player_name") or None
-        save_replay(data, game_mode, results, user_id=user_id, user_player_name=user_player_name)
+        save_replay(data, game_mode, results, user_id=user_id, user_player_name=user_player_name, file_path=replay_filepath)
 
         # Load trends for each player
         trends_data = {}
@@ -368,6 +484,7 @@ def analyze_replay():
 
         return jsonify({
             "success": True,
+            "replay_id": replay_id,
             "game_info": game_info,
             "players": results,
             "trends": trends_data,
@@ -414,6 +531,18 @@ def api_player_profile(player_name):
     if not stats or not stats.get("total_games"):
         return jsonify({"error": "لا توجد بيانات لهذا اللاعب"}), 404
     return jsonify({"stats": stats, "games": games})
+
+@app.route("/api/players/<player_name>/replays", methods=["GET"])
+def api_player_replays(player_name):
+    games = get_replays_for_player(player_name)
+    return jsonify({"replays": games})
+
+@app.route("/api/replay/<replay_id>/download", methods=["GET"])
+def api_replay_download(replay_id):
+    info = get_replay_file_path(replay_id)
+    if not info or not info.get("file_path") or not os.path.exists(info["file_path"]):
+        return jsonify({"error": "ملف الريبلاي غير موجود"}), 404
+    return send_file(info["file_path"], as_attachment=True, download_name=f"{replay_id}.replay")
 
 @app.route("/api/user/history", methods=["GET"])
 def api_user_history():
