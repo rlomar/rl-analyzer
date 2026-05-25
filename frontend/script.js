@@ -59,11 +59,19 @@ function checkAuth() {
                 document.getElementById("stat-mvp").textContent=Math.round((s.total_replays||0)*0.2);
                 document.getElementById("stats-grid").classList.remove("hidden");
 document.getElementById("profile-tabs").classList.remove("hidden");
+// Fetch achievements
+fetch("/api/user/achievements").then(r=>r.json()).then(ad=>{
+    const achs=ad.achievements||[];
+    const c=document.getElementById("achievements-content");
+    c.innerHTML=achs.map(a=>`<div class="achievement-item ${a.unlocked?"unlocked":"locked"}"><span class="achievement-icon">${a.icon}</span><span class="achievement-name">${a.name}</span><span class="achievement-desc">${a.desc}</span></div>`).join("");
+    document.getElementById("achievements-grid").classList.remove("hidden");
+}).catch(()=>{});
             }).catch(()=>{});
         } else {
             uph.classList.add("hidden");
             document.getElementById("stats-grid").classList.add("hidden");
 document.getElementById("profile-tabs").classList.add("hidden");
+document.getElementById("achievements-grid").classList.add("hidden");
         }
         // Check if this user is admin
         fetch("/api/admin/check").then(r=>r.json()).then(ad=>{

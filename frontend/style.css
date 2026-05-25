@@ -579,6 +579,37 @@ h1 span {
     gap: 18px;
     margin-bottom: 28px;
 }
+.achievements-grid {
+    margin-bottom: 28px;
+}
+.achievements-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+}
+.achievement-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 16px 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 16px;
+    text-align: center;
+    transition: 0.2s;
+}
+.achievement-item.locked {
+    opacity: 0.35;
+    filter: grayscale(1);
+}
+.achievement-item.unlocked {
+    border-color: rgba(91,140,255,0.3);
+}
+.achievement-icon { font-size: 28px; }
+.achievement-name { font-size: 13px; font-weight: 700; color: #fff; }
+.achievement-desc { font-size: 11px; color: #8892b0; }
+
 .match-history {
     display: flex;
     flex-direction: column;

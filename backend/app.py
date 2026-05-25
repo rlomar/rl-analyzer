@@ -3,7 +3,7 @@ from datetime import timedelta
 from flask import Flask, request, jsonify, send_from_directory, session, send_file
 from flask_cors import CORS
 from analyzer import RocketLeagueAnalyzer
-from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, get_admin_stats, get_admin_users
+from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, get_admin_stats, get_admin_users, check_and_unlock_achievements, get_user_achievements
 from urllib.parse import urlencode
 from trends import analyze_trends, generate_scrim_team_analysis
 
@@ -507,6 +507,12 @@ def analyze_replay():
         if game_mode in ("scrim", "3v3"):
             team_analysis = generate_scrim_team_analysis(results, game_info)
 
+        # Check achievements
+        new_achievements = []
+        if user_id:
+            stats = get_user_aggregated_stats(user_id)
+            new_achievements = check_and_unlock_achievements(user_id, stats)
+
         return jsonify({
             "success": True,
             "replay_id": replay_id,
@@ -514,6 +520,7 @@ def analyze_replay():
             "players": results,
             "trends": trends_data,
             "team_analysis": team_analysis,
+            "new_achievements": new_achievements,
         })
 
     except Exception as e:
@@ -609,6 +616,13 @@ def api_link_player():
         return jsonify({"error": "الاسم مطلوب"}), 400
     update_last_replay_player_name(session["user_id"], player_name)
     return jsonify({"success": True})
+
+@app.route("/api/user/achievements", methods=["GET"])
+def api_user_achievements():
+    if "user_id" not in session:
+        return jsonify({"error": "ما أنت مسجل دخول"}), 401
+    achs = get_user_achievements(session["user_id"])
+    return jsonify({"achievements": achs})
 
 @app.route("/api/user/set-player-name", methods=["POST"])
 def api_set_player_name():

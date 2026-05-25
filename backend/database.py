@@ -221,6 +221,7 @@ def init_db():
         pass
     conn.commit()
     conn.close()
+    init_achievements()
 
 def get_replay_by_id(replay_id):
     conn = get_db()
@@ -564,6 +565,102 @@ def get_player_full_profile(player_name):
     games = [dict(r) for r in cursor.fetchall()]
     conn.close()
     return stats, games
+
+# ── ACHIEVEMENTS ─────────────────────────
+ACHIEVEMENTS = [
+    {"id": "first_replay", "name": "🎮 أول ريبلاي", "desc": "ارفع أول ريبلاي لك", "icon": "🎮"},
+    {"id": "ten_wins", "name": "🏆 ١٠ انتصارات", "desc": "حقق ١٠ انتصارات", "icon": "🏆"},
+    {"id": "aerial_master", "name": "✈️ ملك الأيريال", "desc": "متوسط وقت بالجو > ٣٠٪", "icon": "✈️"},
+    {"id": "rotation_king", "name": "🔄 ملك الروتنيشن", "desc": "توازن هجوم/دفاع ٤٠-٦٠٪", "icon": "🔄"},
+    {"id": "speed_demon", "name": "⚡ الشيطان السريع", "desc": "متوسط سرعة > ٢٠٠٠", "icon": "⚡"},
+    {"id": "sharp_shooter", "name": "🎯 قناص", "desc": "دقة تسديد > ٥٠٪", "icon": "🎯"},
+    {"id": "boost_manager", "name": "⛽ مدير البوست", "desc": "متوسط بوست ٤٠-٨٠", "icon": "⛽"},
+    {"id": "demo_lord", "name": "💥 مدمر", "desc": "إجمالي ديمو > ١٠", "icon": "💥"},
+    {"id": "wall_warrior", "name": "🧱 محارب الحائط", "desc": "نسبة دفاعية > ٣٥٪", "icon": "🧱"},
+    {"id": "mvp", "name": "⭐ MVP", "desc": "مجموع سكور > ٥٠٠٠", "icon": "⭐"},
+]
+
+def init_achievements():
+    conn = get_db()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS achievements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id),
+            achievement_id TEXT NOT NULL,
+            unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, achievement_id)
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def check_and_unlock_achievements(user_id, stats):
+    if not stats:
+        return []
+    conn = get_db()
+    cursor = conn.cursor()
+    locked = cursor.execute(
+        "SELECT achievement_id FROM achievements WHERE user_id = ?", (user_id,)
+    ).fetchall()
+    locked_ids = {r["achievement_id"] for r in locked}
+    new_unlocks = []
+    ttl = stats.get("total_replays", 0) or 0
+    goals = stats.get("total_goals", 0) or 0
+    avg_air = stats.get("avg_offensive", 0) or 0
+    avg_def = stats.get("avg_defensive", 0) or 0
+    avg_speed = stats.get("avg_speed", 0) or 0
+    avg_shoot = stats.get("avg_shooting_pct", 0) or 0
+    avg_boost = stats.get("avg_boost", 0) or 0
+    total_score = stats.get("total_score", 0) or 0
+    total_demos = stats.get("total_demos", 0) or 0
+
+    checks = {
+        "first_replay": ttl >= 1,
+        "ten_wins": ttl >= 10,
+        "aerial_master": avg_air > 30,
+        "rotation_king": 40 <= avg_air <= 60 and 40 <= avg_def <= 60,
+        "speed_demon": avg_speed > 2000,
+        "sharp_shooter": avg_shoot > 50,
+        "boost_manager": 40 <= avg_boost <= 80,
+        "demo_lord": total_demos >= 10,
+        "wall_warrior": avg_def > 35,
+        "mvp": total_score >= 5000,
+    }
+
+    for ach in ACHIEVEMENTS:
+        aid = ach["id"]
+        if aid in locked_ids:
+            continue
+        if checks.get(aid):
+            try:
+                cursor.execute(
+                    "INSERT INTO achievements (user_id, achievement_id) VALUES (?, ?)",
+                    (user_id, aid)
+                )
+                new_unlocks.append(ach)
+            except Exception:
+                pass
+    if new_unlocks:
+        conn.commit()
+    conn.close()
+    return new_unlocks
+
+def get_user_achievements(user_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    rows = cursor.execute(
+        "SELECT achievement_id, unlocked_at FROM achievements WHERE user_id = ? ORDER BY unlocked_at DESC",
+        (user_id,)
+    ).fetchall()
+    unlocked = {r["achievement_id"]: r["unlocked_at"] for r in rows}
+    result = []
+    for ach in ACHIEVEMENTS:
+        entry = dict(ach)
+        entry["unlocked"] = ach["id"] in unlocked
+        entry["unlocked_at"] = unlocked.get(ach["id"])
+        result.append(entry)
+    conn.close()
+    return result
 
 def record_visit(path, user_id=None, ip=None, user_agent=None):
     conn = get_db()
