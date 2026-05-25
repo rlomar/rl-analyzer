@@ -3,7 +3,7 @@ from datetime import timedelta
 from flask import Flask, request, jsonify, send_from_directory, session, send_file
 from flask_cors import CORS
 from analyzer import RocketLeagueAnalyzer
-from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, get_admin_stats, get_admin_users, check_and_unlock_achievements, get_user_achievements, get_db, award_xp
+from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, get_admin_stats, get_admin_users, check_and_unlock_achievements, get_user_achievements, get_db, award_xp, search_user_exact, get_user_by_display_or_username, get_user_info
 from urllib.parse import urlencode
 from trends import analyze_trends, generate_scrim_team_analysis
 
@@ -90,13 +90,8 @@ def get_steam_display_name(steam_id):
     return None
 
 def get_db_user_id(username):
-    from database import get_db
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, username, display_name, hash_tag, avatar, bio, country, primary_platform, xp FROM users WHERE username = ?", (username,))
-    row = cursor.fetchone()
-    conn.close()
-    return dict(row) if row else None
+    from database import get_user_info
+    return get_user_info(username)
 
 # ── VISIT TRACKING ─────────────────────────
 @app.before_request
@@ -585,12 +580,8 @@ def api_user_search():
     query = request.args.get("q", "").strip()
     if not query:
         return jsonify({"user": None})
-    from database import get_db
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, username, display_name, hash_tag FROM users WHERE IFNULL(display_name, '') LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE LIMIT 1", (f"%{query}%", f"%{query}%"))
-    row = cursor.fetchone()
-    conn.close()
+    from database import search_user_exact
+    row = search_user_exact(query)
     if row:
         r = dict(row)
         tag = r.get("hash_tag", "")
@@ -623,13 +614,8 @@ def api_unified_profile(name):
             "games": games,
         })
     # Try registered user
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, username, display_name, hash_tag, avatar, bio, country, primary_platform FROM users WHERE display_name = ? COLLATE NOCASE OR username = ? COLLATE NOCASE LIMIT 1", (name, name))
-    row = cursor.fetchone()
-    conn.close()
-    if row:
-        r = dict(row)
+    r = get_user_by_display_or_username(name)
+    if r:
         tag = r.get("hash_tag", "")
         display = r.get("display_name") or r.get("username", "")
         return jsonify({
