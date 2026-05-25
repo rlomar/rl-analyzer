@@ -498,8 +498,7 @@ def search_players(query, limit=20):
                    0 AS avg_score,
                    'user' AS source
             FROM users
-            WHERE (display_name LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE)
-              AND display_name IS NOT NULL
+            WHERE (IFNULL(display_name, '') LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE)
         ) combined
         ORDER BY total_games DESC, player_name ASC
         LIMIT ?

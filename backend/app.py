@@ -558,7 +558,7 @@ def api_user_search():
     from database import get_db
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, username, display_name, hash_tag FROM users WHERE display_name LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE LIMIT 1", (f"%{query}%", f"%{query}%"))
+    cursor.execute("SELECT id, username, display_name, hash_tag FROM users WHERE IFNULL(display_name, '') LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE LIMIT 1", (f"%{query}%", f"%{query}%"))
     row = cursor.fetchone()
     conn.close()
     if row:
@@ -631,7 +631,17 @@ def static_files(path):
 
 # ── ADMIN DASHBOARD ────────────────────────
 def _is_admin():
-    return bool(ADMIN_USERNAME) and session.get("user") == ADMIN_USERNAME
+    uid = session.get("user_id")
+    if not uid:
+        return False
+    from database import get_db as _gdb
+    try:
+        _c = _gdb()
+        _r = _c.execute("SELECT is_admin FROM users WHERE id = ?", (uid,)).fetchone()
+        _c.close()
+        return bool(_r and _r["is_admin"])
+    except Exception:
+        return False
 
 @app.route("/api/admin/check", methods=["GET"])
 def api_admin_check():

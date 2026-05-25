@@ -7,3 +7,5 @@ venv/
 *.db
 data/
 discord-bot/
+.secret_key
+backend/.secret_key
