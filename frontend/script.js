@@ -193,17 +193,6 @@ dropZone.addEventListener("dragleave", () => { dropZone.classList.remove("drag-a
 dropZone.addEventListener("drop",e=>{e.preventDefault();dropZone.classList.remove("dragover");if(e.dataTransfer.files.length>0)handleFile(e.dataTransfer.files[0]);});
 fileInput.addEventListener("change",e=>{if(e.target.files.length>0)handleFile(e.target.files[0]);});
 
-function handleFile(file) {
-    if(!file.name.toLowerCase().endsWith(".replay")){showError("الملف لازم يكون .replay");return;}
-    if(!localStorage.getItem("rl_api_key")){showError("سوي حفظ لمفتاح API الأول");return;}
-    const fd = new FormData(); fd.append("file",file); fd.append("game_mode",gameMode);
-    dropZone.classList.add("hidden"); uploadStatus.classList.remove("hidden");
-    fetch(API_URL,{method:"POST",body:fd}).then(r=>r.json()).then(data=>{
-        uploadStatus.classList.add("hidden"); dropZone.classList.remove("hidden");
-        if(data.success) showResults(data); else showError(data.error||"خطأ غير معروف");
-    }).catch(()=>{uploadStatus.classList.add("hidden");dropZone.classList.remove("hidden");showError("تعذر الاتصال. شغل الباك اند.");});
-}
-
 function showResults(data) {
     resultsSection.classList.remove("hidden"); errorSection.classList.add("hidden");
     const game=data.game_info, players=data.players;
@@ -478,6 +467,7 @@ handleFile=function(file){
     const fd=new FormData();fd.append("file",file);fd.append("game_mode",gameMode);
     const savedName=localStorage.getItem("rl_player_name");
     if(savedName) fd.append("player_name",savedName);
+    dropZone.classList.add("hidden");uploadStatus.classList.remove("hidden");
     fetch(API_URL,{method:"POST",body:fd}).then(r=>r.json()).then(data=>{
         uploadStatus.classList.add("hidden");dropZone.classList.remove("hidden");
         if(data.success){pendingResults=data;fetch("/api/me").then(r=>r.json()).then(u=>{if(u.user&&u.user_id&&data.players&&data.players.length)showPlayerPicker(data.players);else showResults(data);}).catch(()=>showResults(data));}
