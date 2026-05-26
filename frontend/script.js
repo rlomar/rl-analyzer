@@ -40,7 +40,7 @@ function showAdminPanel(){
     document.getElementById("admin-user-detail").classList.add("hidden");
     document.getElementById("admin-users-list").innerHTML='<p style="color:#8892b0;">جاري التحميل...</p>';
     fetch("/api/admin/stats").then(r=>r.json()).then(d=>{
-        if(d.error) return;
+        if(d.error){console.warn("Admin stats error:",d.error);return;}
         const s=d.stats||{};
         document.getElementById("admin-stat-users").textContent=s.users||s.total_users||"0";
         document.getElementById("admin-stat-replays").textContent=s.replays||s.total_replays||"0";
@@ -48,7 +48,7 @@ function showAdminPanel(){
         document.getElementById("admin-stat-today").textContent=s.today_replays||"0";
         document.getElementById("admin-stat-week").textContent=s.week_replays||"0";
         document.getElementById("admin-stat-visits").textContent=s.today_visits||s.visits||"0";
-    }).catch(()=>{});
+    }).catch(()=>{console.warn("Admin stats fetch failed");});
     loadAdminUsers();
 }
 function loadAdminUsers(){
@@ -127,7 +127,7 @@ function checkAuth() {
             startUnreadPolling();
             // Show/hide admin button
             const adminBtn=document.getElementById("menu-admin-btn");
-            if(data.is_admin && data.user === "admin") adminBtn.classList.remove("hidden");
+            if(data.is_admin) adminBtn.classList.remove("hidden");
             else adminBtn.classList.add("hidden");
             document.getElementById("auth-logged-out").classList.add("hidden");
             document.getElementById("auth-logged-in").classList.remove("hidden");
