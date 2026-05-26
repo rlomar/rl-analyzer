@@ -641,8 +641,11 @@ def analyze_replay():
                 if summary:
                     trends_data[p["name"]] = summary
             team_analysis = None
-            if game_mode in ("scrim", "3v3"):
-                team_analysis = generate_scrim_team_analysis(results, game_info)
+            if game_mode in ("scrim", "3v3", "2v2"):
+                try:
+                    team_analysis = generate_scrim_team_analysis(results, game_info)
+                except Exception:
+                    team_analysis = None
             return jsonify({
                 "success": True,
                 "replay_id": replay_id,
@@ -705,10 +708,13 @@ def analyze_replay():
             if summary:
                 trends_data[p["name"]] = summary
 
-        # Team analysis for scrim / 3v3
+        # Team analysis for 2v2 / 3v3 / scrim
         team_analysis = None
-        if game_mode in ("scrim", "3v3"):
-            team_analysis = generate_scrim_team_analysis(results, game_info)
+        if game_mode in ("scrim", "3v3", "2v2"):
+            try:
+                team_analysis = generate_scrim_team_analysis(results, game_info)
+            except Exception:
+                team_analysis = None
 
         # Check achievements
         new_achievements = []

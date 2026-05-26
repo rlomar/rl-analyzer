@@ -116,22 +116,25 @@ def _generate_insights(trends, history):
     return insights
 
 def _team_stats(members):
+    def _s(k, default=0):
+        return sum(p["stats"].get(k, default) for p in members)
+    n = len(members) or 1
     return {
-        "goals": sum(p["stats"]["goals"] for p in members),
-        "assists": sum(p["stats"]["assists"] for p in members),
-        "saves": sum(p["stats"]["saves"] for p in members),
-        "shots": sum(p["stats"]["shots"] for p in members),
-        "score": sum(p["stats"]["score"] for p in members),
-        "boost_avg": sum(p["stats"]["boost_avg"] for p in members) / len(members),
-        "speed_avg": sum(p["stats"]["avg_speed"] for p in members) / len(members),
-        "dist_ball": sum(p["stats"]["dist_ball"] for p in members) / len(members),
-        "dist_mates": sum(p["stats"]["dist_mates"] for p in members) / len(members),
-        "demos_in": sum(p["stats"]["demos_inflicted"] for p in members),
-        "demos_taken": sum(p["stats"]["demos_taken"] for p in members),
-        "boost_collected": sum(p["stats"]["boost_collected"] for p in members),
-        "boost_stolen": sum(p["stats"]["boost_stolen"] for p in members),
-        "zero_boost": sum(p["stats"]["percent_zero_boost"] for p in members) / len(members),
-        "powerslides": sum(p["stats"]["count_powerslide"] for p in members),
+        "goals": _s("goals"),
+        "assists": _s("assists"),
+        "saves": _s("saves"),
+        "shots": _s("shots"),
+        "score": _s("score"),
+        "boost_avg": _s("boost_avg") / n,
+        "speed_avg": _s("avg_speed") / n,
+        "dist_ball": _s("dist_ball") / n,
+        "dist_mates": _s("dist_mates") / n,
+        "demos_in": _s("demos_inflicted"),
+        "demos_taken": _s("demos_taken"),
+        "boost_collected": _s("boost_collected"),
+        "boost_stolen": _s("boost_stolen"),
+        "zero_boost": _s("percent_zero_boost") / n,
+        "powerslides": _s("count_powerslide"),
     }
 
 def generate_scrim_team_analysis(players_analysis, game_info):

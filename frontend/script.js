@@ -451,6 +451,16 @@ function showPlayerProfile(pn){
                 const gEl=document.getElementById("pp-following-"+u.username);
                 if(fEl) fEl.textContent=u.followers_count||0;
                 if(gEl) gEl.textContent=u.following_count||0;
+                // Check follow status
+                fetch("/api/user/follow-status?player="+encodeURIComponent(tag)).then(r=>r.json()).then(fd=>{
+                    const btn=content.querySelector(".follow-btn");
+                    if(btn&&fd.following){
+                        btn.dataset.following="1";
+                        btn.textContent="✅ متابَع";
+                        btn.style.background="rgba(0,200,83,0.2)";
+                        btn.style.border="1px solid rgba(0,200,83,0.3)";
+                    }
+                }).catch(()=>{});
             }).catch(()=>{content.innerHTML="<p style='color:#ff1744;'>لا توجد بيانات لهذا اللاعب</p>";});
             return;
         }
@@ -623,6 +633,21 @@ function startUnreadPolling(){
             updateChatBadge(u);
         }).catch(()=>{});
     },5000);
+}
+function switchChatTab(tab){
+    document.querySelectorAll(".chat-tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===tab));
+    document.querySelectorAll(".chat-tab-content").forEach(c=>c.classList.toggle("hidden",c.id!=="chat-"+tab));
+    if(tab==="following") loadChatFollowing();
+}
+function loadChatFollowing(){
+    const el=document.getElementById("chat-following");
+    el.innerHTML='<p style="color:#8892b0;text-align:center;padding:20px;">جاري التحميل...</p>';
+    fetch("/api/user/following").then(r=>r.json()).then(d=>{
+        const list=d.following||[];
+        if(!list.length){el.innerHTML='<p style="color:#8892b0;text-align:center;padding:20px;">لا توجد متابعات</p>';return;}
+        el.innerHTML=list.map(f=>`<div class="chat-follow-item"><span class="online-dot" data-username="${f.username||''}" title="غير متصل"></span><span class="chat-follow-name" onclick="showPlayerProfile('${f.player_name||f.username}')">${f.display_name||f.player_name}</span><button class="btn btn-sm" onclick="startChatWith('${f.username||f.player_name}')" style="padding:4px 10px;font-size:11px;background:rgba(0,200,83,0.12);border:1px solid rgba(0,200,83,0.2);color:#00c853;">💬</button></div>`).join("");
+        fetchOnlineStatus(list.map(f=>f.username).filter(Boolean));
+    }).catch(()=>{el.innerHTML='<p style="color:#ff1744;text-align:center;padding:20px;">تعذر التحميل</p>';});
 }
 function loadChatList(){
     const list=document.getElementById("chat-conversations");

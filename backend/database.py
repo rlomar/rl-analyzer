@@ -723,7 +723,35 @@ def search_players(query, limit=20):
             FROM users
             WHERE (IFNULL(display_name, '') LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE)
         ) combined
-        ORDER BY total_games DESC, player_name ASC
+        ORDER BY source = 'user' DESC, total_games DESC, player_name ASC
+        LIMIT ?
+    """ if USE_PG else f"""
+        SELECT player_name, total_games, total_goals, total_assists, total_saves, avg_score, source FROM (
+            SELECT ps.player_name,
+                   COUNT(r.id) AS total_games,
+                   SUM(ps.goals) AS total_goals,
+                   SUM(ps.assists) AS total_assists,
+                   SUM(ps.saves) AS total_saves,
+                   AVG(ps.score) AS avg_score,
+                   'player' AS source
+            FROM player_stats ps
+            JOIN replays r ON ps.replay_id = r.id
+            WHERE ps.player_name LIKE ? COLLATE NOCASE
+            GROUP BY ps.player_name
+
+            UNION ALL
+
+            SELECT IFNULL(display_name, username) AS player_name,
+                   0 AS total_games,
+                   0 AS total_goals,
+                   0 AS total_assists,
+                   0 AS total_saves,
+                   0 AS avg_score,
+                   'user' AS source
+            FROM users
+            WHERE (IFNULL(display_name, '') LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE)
+        ) combined
+        ORDER BY source = 'user' DESC, total_games DESC, player_name ASC
         LIMIT ?
     """
     if USE_PG:
@@ -919,7 +947,9 @@ def get_followers(user_id):
 def get_following(user_id):
     conn = get_db()
     rows = _c(conn, """
-        SELECT f.following AS player_name, f.player_name FROM follows f
+        SELECT f.following AS player_name, f.player_name, u.username, u.display_name
+        FROM follows f
+        LEFT JOIN users u ON (u.display_name = f.following OR u.username = f.following)
         WHERE f.follower_id = %s
     """, (user_id,)).fetchall()
     conn.close()

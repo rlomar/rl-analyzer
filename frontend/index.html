@@ -362,7 +362,12 @@
             <button id="chat-close" onclick="toggleChat()">✕</button>
         </div>
         <div id="chat-list-view">
-            <div id="chat-conversations"><p style="color:#8892b0;text-align:center;padding:20px;">لا توجد محادثات</p></div>
+            <div id="chat-tabs" class="chat-tabs">
+                <button class="chat-tab active" data-tab="conversations" onclick="switchChatTab('conversations')">المحادثات</button>
+                <button class="chat-tab" data-tab="following" onclick="switchChatTab('following')">المتابعات</button>
+            </div>
+            <div id="chat-conversations" class="chat-tab-content"><p style="color:#8892b0;text-align:center;padding:20px;">لا توجد محادثات</p></div>
+            <div id="chat-following" class="chat-tab-content hidden"><p style="color:#8892b0;text-align:center;padding:20px;">جاري التحميل...</p></div>
         </div>
         <div id="chat-messages-view" class="hidden">
             <div id="chat-messages-top">
