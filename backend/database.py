@@ -108,6 +108,12 @@ def get_user_info(username):
     conn.close()
     return dict(row) if row else None
 
+def get_user_info_by_id(user_id):
+    conn = get_db()
+    row = _c(conn, "SELECT id, username, display_name, hash_tag, avatar, bio, country, primary_platform, xp FROM users WHERE id = %s", (user_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
 def search_user_exact(query):
     conn = get_db()
     like = f"%{query}%"
@@ -353,6 +359,16 @@ def init_db():
         _c(conn, "ALTER TABLE users ADD COLUMN xp INTEGER DEFAULT 0")
     except:
         pass
+    # Password resets table
+    _script(conn, """
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id INTEGER NOT NULL REFERENCES chats(id),
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            resolved INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
     conn.commit()
     conn.close()
 
@@ -1136,7 +1152,44 @@ def record_visit(path, user_id=None, ip=None, user_agent=None):
     conn = get_db()
     _c(conn, "INSERT INTO page_visits (path, user_id, ip, user_agent) VALUES (%s, %s, %s, %s)",
          (path, user_id, ip, user_agent))
+    # Password resets table
+    _script(conn, """
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id INTEGER NOT NULL REFERENCES chats(id),
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            resolved INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
     conn.commit()
     conn.close()
 
+# ── PASSWORD RESET ───────────────────────
+def create_password_reset(chat_id, user_id):
+    conn = get_db()
+    _c(conn, "INSERT INTO password_resets (chat_id, user_id) VALUES (%s, %s)", (chat_id, user_id))
+    conn.commit()
+    pid = _last_id(conn, "password_resets")
+    conn.close()
+    return pid
+
+def get_pending_password_reset(chat_id):
+    conn = get_db()
+    row = _c(conn, "SELECT id, user_id FROM password_resets WHERE chat_id = %s AND resolved = 0 ORDER BY created_at DESC LIMIT 1", (chat_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def resolve_password_reset(reset_id):
+    conn = get_db()
+    _c(conn, "UPDATE password_resets SET resolved = 1 WHERE id = %s", (reset_id,))
+    conn.commit()
+    conn.close()
+
+def update_user_password(user_id, new_password):
+    conn = get_db()
+    from werkzeug.security import generate_password_hash
+    _c(conn, "UPDATE users SET password = %s WHERE id = %s", (generate_password_hash(new_password), user_id))
+    conn.commit()
+    conn.close()
 

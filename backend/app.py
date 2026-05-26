@@ -3,7 +3,7 @@ from datetime import timedelta
 from flask import Flask, request, jsonify, send_from_directory, session, send_file
 from flask_cors import CORS
 from analyzer import RocketLeagueAnalyzer
-from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, check_and_unlock_achievements, get_user_achievements, get_db, award_xp, search_user_exact, get_user_by_display_or_username, get_user_info, get_radar_metrics, _c, follow_user, unfollow_user, get_followers, get_following, is_following, get_follower_count, get_following_count, create_or_get_chat, get_user_chats, get_chat_messages, send_message, block_user, unblock_user, get_blocked_users, is_blocked, mark_chat_read, get_total_unread_count, USE_PG
+from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, check_and_unlock_achievements, get_user_achievements, get_db, award_xp, search_user_exact, get_user_by_display_or_username, get_user_info, get_user_info_by_id, get_radar_metrics, _c, follow_user, unfollow_user, get_followers, get_following, is_following, get_follower_count, get_following_count, create_or_get_chat, get_user_chats, get_chat_messages, send_message, block_user, unblock_user, get_blocked_users, is_blocked, mark_chat_read, get_total_unread_count, USE_PG, create_password_reset, get_pending_password_reset, resolve_password_reset, update_user_password
 from urllib.parse import urlencode
 from trends import analyze_trends, generate_scrim_team_analysis
 
@@ -330,6 +330,33 @@ def api_auth_register():
     session["user_id"] = uid
     session.permanent = True
     return jsonify({"success": True, "user": {"username": username, "id": uid}})
+
+@app.route("/api/auth/forgot-password", methods=["POST"])
+def api_auth_forgot_password():
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    if not username:
+        return jsonify({"error": "يرجى إدخال اسم المستخدم"}), 400
+    # Find user
+    user = get_user_info(username)
+    if not user:
+        return jsonify({"error": "المستخدم غير موجود"}), 404
+    # Find admin user
+    admin = get_user_info(ADMIN_USERNAME)
+    if not admin:
+        return jsonify({"error": "لا يوجد أدمن في النظام"}), 500
+    # Don't allow password reset for admin
+    if username == ADMIN_USERNAME:
+        return jsonify({"error": "لا يمكن إعادة تعيين كلمة مرور الأدمن"}), 400
+    # Create or get chat between admin and user
+    cid = create_or_get_chat(admin["id"], user["id"])
+    # Create password reset entry
+    create_password_reset(cid, user["id"])
+    # Send auto message in chat
+    display = user.get("display_name") or username
+    msg = f"🔑 المستخدم `{display}` (@{username}) طلب إعادة تعيين كلمة المرور.\nاكتب كلمة المرور الجديدة هنا وسيتم تغييرها تلقائياً."
+    send_message(cid, admin["id"], msg)
+    return jsonify({"success": True, "message": "تم إرسال طلبك للأدمن. سيتم تغيير كلمة المرور قريباً."})
 
 @app.route("/api/auth/login", methods=["POST"])
 def api_auth_login():
@@ -1024,7 +1051,32 @@ def api_chat_send(chat_id):
     data = request.get_json(silent=True) or {}
     content = data.get("content", "").strip()
     if not content: return jsonify({"error": "الرسالة فارغة"}), 400
-    send_message(chat_id, session["user_id"], content)
+    sender_id = session["user_id"]
+    # Check if this is the admin sending a message in a password reset chat
+    conn = get_db()
+    row = _c(conn, "SELECT username, is_admin FROM users WHERE id = %s", (sender_id,)).fetchone()
+    conn.close()
+    if row and row["is_admin"] and row["username"] == ADMIN_USERNAME:
+        pending = get_pending_password_reset(chat_id)
+        if pending:
+            new_password = content
+            if len(new_password) >= 4:
+                update_user_password(pending["user_id"], new_password)
+                resolve_password_reset(pending["id"])
+                # Get username for confirmation
+                uinfo = get_user_info_by_id(pending["user_id"])
+                uname = (uinfo.get("display_name") or uinfo.get("username") or "المستخدم") if uinfo else "المستخدم"
+                # Save the admin's message first
+                send_message(chat_id, sender_id, content)
+                # Send confirmation as auto message
+                send_message(chat_id, sender_id, f"✅ تم تغيير كلمة المرور للمستخدم `{uname}` بنجاح!")
+                return jsonify({"success": True})
+            else:
+                # Save message anyway but don't update password
+                send_message(chat_id, sender_id, content)
+                send_message(chat_id, sender_id, "⚠️ كلمة المرور يجب أن تكون 4 أحرف على الأقل. حاول مرة أخرى.")
+                return jsonify({"success": True})
+    send_message(chat_id, sender_id, content)
     return jsonify({"success": True})
 
 # ── BLOCK API ───────────────────────────

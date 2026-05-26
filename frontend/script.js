@@ -237,6 +237,18 @@ function switchAuthTab(tab){
     document.getElementById("auth-form-login").classList.toggle("hidden",tab!=="login");
     document.getElementById("auth-form-register").classList.toggle("hidden",tab!=="register");
 }
+function doForgotPassword(){
+    const u=document.getElementById("login-username").value.trim();
+    if(!u){alert("يرجى إدخال اسم المستخدم أولاً");return;}
+    const err=document.getElementById("login-error");
+    err.style.display="none";
+    fetch("/api/auth/forgot-password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u})})
+    .then(r=>r.json()).then(d=>{
+        if(d.error){err.textContent=d.error;err.style.display="block";return;}
+        closeAuthModal();
+        alert(d.message||"تم إرسال طلبك للأدمن. سيتم تغيير كلمة المرور قريباً.");
+    }).catch(()=>{err.textContent="خطأ في الاتصال";err.style.display="block";});
+}
 function doLogin(){
     const u=document.getElementById("login-username").value.trim();
     const p=document.getElementById("login-password").value;
