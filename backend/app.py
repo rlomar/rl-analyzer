@@ -3,7 +3,7 @@ from datetime import timedelta
 from flask import Flask, request, jsonify, send_from_directory, session, send_file
 from flask_cors import CORS
 from analyzer import RocketLeagueAnalyzer
-from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, check_and_unlock_achievements, get_user_achievements, get_db, award_xp, search_user_exact, get_user_by_display_or_username, get_user_info, get_radar_metrics, _c, follow_user, unfollow_user, get_followers, get_following, is_following, create_or_get_chat, get_user_chats, get_chat_messages, send_message, block_user, unblock_user, get_blocked_users, is_blocked, mark_chat_read, get_total_unread_count
+from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, check_and_unlock_achievements, get_user_achievements, get_db, award_xp, search_user_exact, get_user_by_display_or_username, get_user_info, get_radar_metrics, _c, follow_user, unfollow_user, get_followers, get_following, is_following, get_follower_count, get_following_count, create_or_get_chat, get_user_chats, get_chat_messages, send_message, block_user, unblock_user, get_blocked_users, is_blocked, mark_chat_read, get_total_unread_count
 from urllib.parse import urlencode
 from trends import analyze_trends, generate_scrim_team_analysis
 
@@ -380,6 +380,8 @@ def api_user_profile():
             "country": info.get("country") if info else None,
             "primary_platform": info.get("primary_platform") if info else None,
             "xp": info.get("xp") if info else 0,
+            "followers_count": get_follower_count(uid),
+            "following_count": get_following_count(uid),
         },
         "stats": stats,
         "settings": settings,
@@ -775,6 +777,8 @@ def api_user_search():
             "hash_tag": tag,
             "tagged_name": f"{display}#{tag}" if tag else display,
             "xp": r.get("xp", 0),
+            "followers_count": get_follower_count(r["id"]),
+            "following_count": get_following_count(r["id"]),
         }})
     return jsonify({"user": None})
 

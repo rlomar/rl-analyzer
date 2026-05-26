@@ -119,8 +119,10 @@ def search_user_exact(query):
 
 def get_user_by_display_or_username(name):
     conn = get_db()
-    where = "display_name = %s OR username = %s" if USE_PG else "display_name = ? COLLATE NOCASE OR username = ? COLLATE NOCASE"
-    sql = f"SELECT id, username, display_name, hash_tag, avatar, bio, country, primary_platform, xp FROM users WHERE {where} LIMIT 1"
+    if USE_PG:
+        sql = "SELECT id, username, display_name, hash_tag, avatar, bio, country, primary_platform, xp FROM users WHERE display_name ILIKE %s OR username ILIKE %s LIMIT 1"
+    else:
+        sql = "SELECT id, username, display_name, hash_tag, avatar, bio, country, primary_platform, xp FROM users WHERE display_name = ? COLLATE NOCASE OR username = ? COLLATE NOCASE LIMIT 1"
     row = _c(conn, sql, (name, name)).fetchone()
     conn.close()
     return dict(row) if row else None
@@ -1056,6 +1058,20 @@ def get_total_unread_count(user_id):
             '1970-01-01'
         ))
     """, (user_id, user_id, user_id, user_id)).fetchone()
+    conn.close()
+    return row["c"] if row else 0
+
+def get_follower_count(user_id):
+    conn = get_db()
+    me = _c(conn, "SELECT COALESCE(display_name, username) AS myname FROM users WHERE id = %s", (user_id,)).fetchone()
+    if not me: conn.close(); return 0
+    row = _c(conn, "SELECT COUNT(*) AS c FROM follows WHERE following = %s", (me["myname"],)).fetchone()
+    conn.close()
+    return row["c"] if row else 0
+
+def get_following_count(user_id):
+    conn = get_db()
+    row = _c(conn, "SELECT COUNT(*) AS c FROM follows WHERE follower_id = %s", (user_id,)).fetchone()
     conn.close()
     return row["c"] if row else 0
 

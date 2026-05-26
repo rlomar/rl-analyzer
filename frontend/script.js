@@ -165,6 +165,8 @@ if(u.username) fetchOnlineStatus([u.username]);
                 if(banner) banner.style.background=colors[rank]||colors.Bronze;
                 uph.classList.remove("hidden");
                 // Stats cards
+                if(u.followers_count!==undefined) document.getElementById("uph-followers").textContent=u.followers_count;
+                if(u.following_count!==undefined) document.getElementById("uph-following").textContent=u.following_count;
                 document.getElementById("stat-goals").textContent=s.total_goals||0;
                 document.getElementById("stat-wins").textContent=Math.round((s.total_replays||0)*0.45);
                 document.getElementById("stat-accuracy").textContent=Math.round(s.avg_shooting_pct||0)+"%";
@@ -414,6 +416,7 @@ function showPlayerProfile(pn){
                     return;
                 }
                 const tag=u.tagged_name||u.display_name||u.username||pn;
+                const username=u.username||pn;
                 const rank="Bronze";
                 const rc=rankColors[rank];
                 const link=`${window.location.origin}/p/${encodeURIComponent(u.username)}`;
@@ -428,16 +431,26 @@ function showPlayerProfile(pn){
                             <div class="profile-info">
                                 <h2 style="color:#fff;margin:0;">${tag} <span class="online-dot" data-username="${u.username}" title="غير متصل"></span></h2>
                                 <p class="profile-sub" style="color:#8892b0;font-size:13px;">👤 مستخدم مسجل — لا توجد ريبلايات بعد</p>
+                                <div class="follow-stats" style="justify-content:center;margin-bottom:8px;">
+                                    <span><strong id="pp-followers-${u.username}">0</strong> متابع</span>
+                                    <span class="dot-sep">·</span>
+                                    <span><strong id="pp-following-${u.username}">0</strong> متابعة</span>
+                                </div>
                                 <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;">
                                     <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${link}');alert('✅ تم نسخ الرابط')" style="padding:6px 14px;font-size:12px;">🔗 نسخ الرابط</button>
-                                    <button class="btn btn-sm follow-btn" data-following="0" onclick="toggleFollow('${pn}',this)" style="padding:6px 14px;font-size:12px;background:rgba(91,140,255,0.2);border:1px solid rgba(91,140,255,0.3);">➕ متابعة</button>
-                                    <button class="btn btn-sm" onclick="startChatWith('${pn}')" style="padding:6px 14px;font-size:12px;background:rgba(0,200,83,0.15);border:1px solid rgba(0,200,83,0.2);">💬</button>
+                                    <button class="btn btn-sm follow-btn" data-following="0" onclick="toggleFollow('${tag}',this)" style="padding:6px 14px;font-size:12px;background:rgba(91,140,255,0.2);border:1px solid rgba(91,140,255,0.3);">➕ متابعة</button>
+                                    <button class="btn btn-sm" onclick="startChatWith('${username}')" style="padding:6px 14px;font-size:12px;background:rgba(0,200,83,0.15);border:1px solid rgba(0,200,83,0.2);">💬</button>
                                 </div>
                             </div>
                         </div>
                     </div>`;
                 content.innerHTML=html;
                 fetchOnlineStatus([u.username]);
+                // Update follow counts from user-search response
+                const fEl=document.getElementById("pp-followers-"+u.username);
+                const gEl=document.getElementById("pp-following-"+u.username);
+                if(fEl) fEl.textContent=u.followers_count||0;
+                if(gEl) gEl.textContent=u.following_count||0;
             }).catch(()=>{content.innerHTML="<p style='color:#ff1744;'>لا توجد بيانات لهذا اللاعب</p>";});
             return;
         }
