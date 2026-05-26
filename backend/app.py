@@ -102,6 +102,16 @@ def track_visit():
             ip=request.remote_addr,
             user_agent=request.headers.get("User-Agent", "")[:200],
         )
+    # Update last_seen for authenticated users on any API call
+    uid = session.get("user_id")
+    if uid:
+        try:
+            conn = get_db()
+            _c(conn, "UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = %s", (uid,))
+            conn.commit()
+            conn.close()
+        except:
+            pass
 
 # ── STEAM LOGIN ────────────────────────────
 @app.route("/api/auth/steam")
@@ -922,6 +932,35 @@ def api_followers():
 def api_following():
     if "user_id" not in session: return jsonify({"error": "سجل الدخول أولاً"}), 401
     return jsonify({"following": get_following(session["user_id"])})
+
+# ── ONLINE STATUS ────────────────────────
+@app.route("/api/user/online-status", methods=["GET"])
+def api_online_status():
+    usernames = request.args.getlist("username")
+    if not usernames:
+        return jsonify({})
+    placeholders = ", ".join("%s" for _ in usernames)
+    conn = get_db()
+    rows = _c(conn, f"SELECT username, last_seen FROM users WHERE username IN ({placeholders})", usernames).fetchall()
+    conn.close()
+    now = time.time()
+    is_pg = "DATABASE_URL" in os.environ
+    result = {}
+    for r in rows:
+        ls = r.get("last_seen")
+        online = False
+        if ls:
+            try:
+                if is_pg:
+                    online = (now - ls.timestamp()) < 300
+                else:
+                    from datetime import datetime
+                    dt = datetime.strptime(ls, "%Y-%m-%d %H:%M:%S") if isinstance(ls, str) else ls
+                    online = (now - dt.timestamp()) < 300
+            except:
+                online = False
+        result[r["username"]] = {"online": online, "last_seen": str(ls) if ls else None}
+    return jsonify(result)
 
 @app.route("/api/user/follow-status", methods=["GET"])
 def api_follow_status():

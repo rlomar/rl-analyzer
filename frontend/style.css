@@ -598,12 +598,9 @@ h1 span {
     color: #00c853;
     margin-bottom: 6px;
 }
-.dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #00c853;
-    animation: pulse-dot 2s infinite;
+#uph-online-text {
+    font-size: 12px;
+    color: #5a6a8a;
 }
 
 .profile-sub {
@@ -1387,6 +1384,22 @@ h1 span {
 .disclaimer-card p {
     font-size: 13px;
     color: #5a6a8a;
+}
+
+/* ─── ONLINE STATUS DOT ──────────────── */
+.online-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #5a6a8a;
+    vertical-align: middle;
+    margin-left: 4px;
+    transition: background 0.3s;
+}
+.online-dot.online {
+    background: #00c853;
+    box-shadow: 0 0 6px rgba(0,200,83,0.6);
 }
 
 /* ─── CHAT BADGE ────────────────────────── */

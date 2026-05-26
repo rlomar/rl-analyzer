@@ -338,6 +338,14 @@ def init_db():
             UNIQUE(chat_id, user_id)
         );
     """)
+    # Add last_seen column to users (online status)
+    try:
+        if USE_PG:
+            conn.cursor().execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP")
+        else:
+            conn.execute("ALTER TABLE users ADD COLUMN last_seen TIMESTAMP")
+    except:
+        pass
     # XP column migration
     try:
         _c(conn, "ALTER TABLE users ADD COLUMN xp INTEGER DEFAULT 0")
@@ -870,11 +878,15 @@ def get_user_achievements(user_id):
 def follow_user(follower_id, player_name):
     conn = get_db()
     try:
-        _c(conn, "INSERT OR IGNORE INTO follows (follower_id, following, player_name) VALUES (%s, %s, %s)",
-              (follower_id, player_name, player_name))
+        if USE_PG:
+            _c(conn, "INSERT INTO follows (follower_id, following, player_name) VALUES (%s, %s, %s) ON CONFLICT (follower_id, following) DO NOTHING",
+                  (follower_id, player_name, player_name))
+        else:
+            _c(conn, "INSERT OR IGNORE INTO follows (follower_id, following, player_name) VALUES (%s, %s, %s)",
+                  (follower_id, player_name, player_name))
         conn.commit()
         return True
-    except:
+    except Exception as e:
         return False
     finally:
         conn.close()
@@ -888,13 +900,17 @@ def unfollow_user(follower_id, player_name):
 
 def get_followers(user_id):
     conn = get_db()
+    # Find the user's display or username to match against follows.following
+    me = _c(conn, "SELECT COALESCE(display_name, username) AS myname FROM users WHERE id = %s", (user_id,)).fetchone()
+    if not me:
+        conn.close()
+        return []
+    myname = me["myname"]
     rows = _c(conn, """
         SELECT u.username, u.display_name FROM follows f
         JOIN users u ON u.id = f.follower_id
-        WHERE f.player_name IN (
-            SELECT COALESCE(u2.display_name, u2.username) FROM users u2 WHERE u2.id = %s
-        )
-    """, (user_id,)).fetchall()
+        WHERE f.following = %s
+    """, (myname,)).fetchall()
     conn.close()
     return rows
 
@@ -922,9 +938,14 @@ def create_or_get_chat(user1_id, user2_id):
     if row:
         conn.close()
         return row["id"]
-    _c(conn, "INSERT INTO chats (user1_id, user2_id) VALUES (%s, %s)", (a, b))
-    conn.commit()
-    cid = _last_id(conn, "chats")
+    if USE_PG:
+        row = _c(conn, "INSERT INTO chats (user1_id, user2_id) VALUES (%s, %s) RETURNING id", (a, b)).fetchone()
+        conn.commit()
+        cid = row["id"]
+    else:
+        _c(conn, "INSERT INTO chats (user1_id, user2_id) VALUES (%s, %s)", (a, b))
+        conn.commit()
+        cid = _last_id(conn, "chats")
     conn.close()
     return cid
 
@@ -969,11 +990,15 @@ def send_message(chat_id, sender_id, content):
 def block_user(blocker_id, blocked_id):
     conn = get_db()
     try:
-        _c(conn, "INSERT OR IGNORE INTO blocks (blocker_id, blocked_id) VALUES (%s, %s)",
-              (blocker_id, blocked_id))
+        if USE_PG:
+            _c(conn, "INSERT INTO blocks (blocker_id, blocked_id) VALUES (%s, %s) ON CONFLICT (blocker_id, blocked_id) DO NOTHING",
+                  (blocker_id, blocked_id))
+        else:
+            _c(conn, "INSERT OR IGNORE INTO blocks (blocker_id, blocked_id) VALUES (%s, %s)",
+                  (blocker_id, blocked_id))
         conn.commit()
         return True
-    except:
+    except Exception as e:
         return False
     finally:
         conn.close()
@@ -997,8 +1022,12 @@ def get_blocked_users(blocker_id):
 
 def mark_chat_read(chat_id, user_id):
     conn = get_db()
-    _c(conn, "INSERT OR REPLACE INTO chat_read_status (chat_id, user_id, last_read_at) VALUES (%s, %s, CURRENT_TIMESTAMP)",
-          (chat_id, user_id))
+    if USE_PG:
+        _c(conn, "INSERT INTO chat_read_status (chat_id, user_id, last_read_at) VALUES (%s, %s, CURRENT_TIMESTAMP) ON CONFLICT (chat_id, user_id) DO UPDATE SET last_read_at = CURRENT_TIMESTAMP",
+              (chat_id, user_id))
+    else:
+        _c(conn, "INSERT OR REPLACE INTO chat_read_status (chat_id, user_id, last_read_at) VALUES (%s, %s, CURRENT_TIMESTAMP)",
+              (chat_id, user_id))
     conn.commit()
     conn.close()
 

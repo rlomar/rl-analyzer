@@ -123,6 +123,7 @@ function checkAuth() {
     fetch("/api/me").then(r=>r.json()).then(data => {
         const uph=document.getElementById("user-profile-header");
         if (data.user) {
+            window.currentUsername=data.user;
             startUnreadPolling();
             // Show/hide admin button
             const adminBtn=document.getElementById("menu-admin-btn");
@@ -152,8 +153,9 @@ function checkAuth() {
                 av.style.setProperty("--avatar-border",c);
                 av.style.setProperty("--avatar-glow",c+"44");
                 av.style.setProperty("--avatar-glow-soft",c+"22");
-const onlineDot=document.querySelector("#user-profile-header .dot");
-if(onlineDot) onlineDot.style.background="#00c853";
+const uphDot=document.getElementById("uph-dot");
+if(uphDot) uphDot.dataset.username=u.username||"";
+if(u.username) fetchOnlineStatus([u.username]);
                 document.getElementById("uph-level").textContent="Level "+level;
                 document.getElementById("uph-xp").style.width=xpPct+"%";
                 document.getElementById("uph-xp-text").textContent=(totalXp%1000)+" / 1000 XP";
@@ -424,7 +426,7 @@ function showPlayerProfile(pn){
                                 <div class="rank-badge">${rank}</div>
                             </div>
                             <div class="profile-info">
-                                <h2 style="color:#fff;margin:0;">${tag}</h2>
+                                <h2 style="color:#fff;margin:0;">${tag} <span class="online-dot" data-username="${u.username}" title="غير متصل"></span></h2>
                                 <p class="profile-sub" style="color:#8892b0;font-size:13px;">👤 مستخدم مسجل — لا توجد ريبلايات بعد</p>
                                 <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;">
                                     <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${link}');alert('✅ تم نسخ الرابط')" style="padding:6px 14px;font-size:12px;">🔗 نسخ الرابط</button>
@@ -435,6 +437,7 @@ function showPlayerProfile(pn){
                         </div>
                     </div>`;
                 content.innerHTML=html;
+                fetchOnlineStatus([u.username]);
             }).catch(()=>{content.innerHTML="<p style='color:#ff1744;'>لا توجد بيانات لهذا اللاعب</p>";});
             return;
         }
@@ -523,7 +526,8 @@ function loadFollowersList(el){
     fetch("/api/user/followers").then(r=>r.json()).then(d=>{
         const list=d.followers||[];
         if(!list.length){el.innerHTML='<p style="color:#8892b0;">لا يوجد متابعين</p>';return;}
-        el.innerHTML=list.map(f=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="color:#fff;">${f.display_name||f.username||f.player_name}</span></div>`).join("");
+        el.innerHTML=list.map(f=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="color:#fff;">${f.display_name||f.username} <span class="online-dot" data-username="${f.username||''}" title="غير متصل"></span></span></div>`).join("");
+        fetchOnlineStatus(list.map(f=>f.username).filter(Boolean));
     }).catch(()=>{el.innerHTML='<p style="color:#ff1744;">تعذر التحميل</p>';});
 }
 function loadFollowingList(el){
@@ -531,8 +535,31 @@ function loadFollowingList(el){
     fetch("/api/user/following").then(r=>r.json()).then(d=>{
         const list=d.following||[];
         if(!list.length){el.innerHTML='<p style="color:#8892b0;">لا توجد متابعات</p>';return;}
-        el.innerHTML=list.map(f=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="color:#fff;cursor:pointer;" onclick="showPlayerProfile('${f.player_name||f.username}')">${f.display_name||f.username||f.player_name}</span></div>`).join("");
+        el.innerHTML=list.map(f=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="color:#fff;cursor:pointer;" onclick="showPlayerProfile('${f.player_name||f.username}')">${f.display_name||f.player_name} <span class="online-dot" data-username="${f.username||''}" title="غير متصل"></span></span></div>`).join("");
+        fetchOnlineStatus(list.map(f=>f.username).filter(Boolean));
     }).catch(()=>{el.innerHTML='<p style="color:#ff1744;">تعذر التحميل</p>';});
+}
+
+// ═══ ONLINE STATUS ══════════════════════
+function fetchOnlineStatus(usernames){
+    if(!usernames||!usernames.length) return;
+    const qs=usernames.map(u=>"username="+encodeURIComponent(u)).join("&");
+    fetch("/api/user/online-status?"+qs).then(r=>r.json()).then(d=>{
+        for(const[name,info]of Object.entries(d)){
+            const dots=document.querySelectorAll(".online-dot[data-username='"+name+"']");
+            dots.forEach(dot=>{
+                dot.classList.toggle("online",info.online);
+                dot.title=info.online?"متصل الآن":"غير متصل";
+                const txt=dot.parentElement&&dot.parentElement.querySelector(".online-text");
+                if(txt) txt.textContent=info.online?"متصل":"غير متصل";
+            });
+            // Also update the main profile header text
+            if(name===currentUsername){
+                const txt=document.getElementById("uph-online-text");
+                if(txt) txt.textContent=info.online?"متصل":"غير متصل";
+            }
+        }
+    }).catch(()=>{});
 }
 
 // ═══ NOTIFICATION SOUND ═════════════════
@@ -592,7 +619,8 @@ function loadChatList(){
     fetch("/api/chats").then(r=>r.json()).then(d=>{
         const chats=d.chats||[];
         if(!chats.length){list.innerHTML='<p style="color:#8892b0;text-align:center;padding:20px;">لا توجد محادثات</p>';return;}
-        list.innerHTML=chats.map(c=>`<div class="chat-conv-item" onclick="openChat(${c.id},'${c.other_name||""}')"><div class="chat-conv-avatar">${(c.other_name||"?")[0].toUpperCase()}</div><div class="chat-conv-info"><div class="chat-conv-name">${c.other_name||"غير معروف"}${c.unread?` <span class="chat-conv-badge">${c.unread>99?'99+':c.unread}</span>`:""}</div><div class="chat-conv-preview">${c.last_message||""}</div></div></div>`).join("");
+        list.innerHTML=chats.map(c=>`<div class="chat-conv-item" onclick="openChat(${c.id},'${c.other_name||""}')"><div class="chat-conv-avatar">${(c.other_name||"?")[0].toUpperCase()}</div><div class="chat-conv-info"><div class="chat-conv-name">${c.other_name||"غير معروف"} <span class="online-dot" data-username="${c.other_name||""}" title="غير متصل"></span>${c.unread?` <span class="chat-conv-badge">${c.unread>99?'99+':c.unread}</span>`:""}</div><div class="chat-conv-preview">${c.last_message||""}</div></div></div>`).join("");
+        fetchOnlineStatus(chats.map(c=>c.other_name).filter(Boolean));
     }).catch(()=>{list.innerHTML='<p style="color:#ff1744;text-align:center;padding:20px;">تعذر التحميل</p>';});
 }
 let chatOtherName=null;
