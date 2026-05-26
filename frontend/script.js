@@ -198,7 +198,7 @@ dropZone.addEventListener("dragleave", () => { dropZone.classList.remove("drag-a
 dropZone.addEventListener("drop",e=>{e.preventDefault();dropZone.classList.remove("dragover");if(e.dataTransfer.files.length>0)handleFile(e.dataTransfer.files[0]);});
 fileInput.addEventListener("change",e=>{if(e.target.files.length>0)handleFile(e.target.files[0]);});
 
-function showResults(data) {
+function showResults(data, selectedPlayer) {
     resultsSection.classList.remove("hidden"); errorSection.classList.add("hidden");
     const game=data.game_info, players=data.players;
     const mins=Math.floor((game.duration||0)/60), secs=Math.floor((game.duration||0)%60);
@@ -212,10 +212,13 @@ function showResults(data) {
         ${game.overtime?`<div class="game-stat"><span class="label">⏱</span><span class="value" style="color:#ff1744">وقت إضافي!</span></div>`:""}
         ${rid?`<div class="game-stat"><span class="label">⬇ تحميل</span><span class="value"><a href="/api/replay/${rid}/download" class="btn btn-sm" style="padding:4px 12px;text-decoration:none;">تحميل الريبلاي</a></span></div>`:""}`;
     const trends=data.trends||{}; renderTrends(trends);
+    // Sort: selected player first, then rest
+    const sorted = [...players].sort((a,b)=> (a.name===selectedPlayer?-1:b.name===selectedPlayer?1:0));
     let html="";
-    players.forEach((p,i)=>{
-        const s=p.stats, tc=p.team_key||(i<2?"blue":"orange"), pt=trends[p.name];
-        html+=`<div class="player-card team-${tc}"><div class="player-header"><span class="player-name">${p.name}</span><span class="team-badge ${tc}">${tc==="blue"?"الأزرق":"البرتقالي"}</span></div>
+    sorted.forEach((p,i)=>{
+        const s=p.stats, tc=p.team_key||"blue", pt=trends[p.name];
+        const isMe=p.name===selectedPlayer;
+        html+=`<div class="player-card team-${tc}" style="${isMe?'border:2px solid #5b8cff;':''}"><div class="player-header"><span class="player-name">${isMe?'👤 ':''}${p.name}</span><span class="team-badge ${tc}">${tc==="blue"?"الأزرق":"البرتقالي"}${isMe?' ⭐':''}</span></div>
         ${pt&&pt.insights&&pt.insights.length?`<div class="trends-mini">${pt.insights.map(i=>`<span class="trend-insight">${i}</span>`).join("")}</div>`:""}
         <div class="stats-grid">${renderStatsGrid(s)}</div>
         <div class="tips-section"><h3>💡 نصائح مخصصة — بدون مجاملة</h3>${p.tips.map(t=>`<div class="tip-card priority-${t.priority}"><div class="tip-header"><span class="tip-title">${t.title}</span><span class="tip-priority ${t.priority}">${t.priority==="high"?"🚨 مهم":t.priority==="medium"?"⚡ متوسط":"✅ ممتاز"}</span></div><p class="tip-advice">${t.advice}</p></div>`).join("")}</div>
@@ -223,7 +226,8 @@ function showResults(data) {
     });
     document.getElementById("players-results").innerHTML=html;
     if(data.team_analysis) renderTeamAnalysis(data.team_analysis);
-    if(players.length>0) loadPlayerHistory(players[0].name);
+    if(selectedPlayer) loadPlayerHistory(selectedPlayer);
+    else if(players.length>0) loadPlayerHistory(players[0].name);
     resultsSection.scrollIntoView({behavior:"smooth"});
 }
 function renderStatsGrid(s){return`<div class="stat-item"><span class="stat-label">⚽ أهداف</span><span class="stat-value">${s.goals}</span></div><div class="stat-item"><span class="stat-label">🎯 تمريرات</span><span class="stat-value">${s.assists}</span></div><div class="stat-item"><span class="stat-label">🛑 تصديات</span><span class="stat-value">${s.saves}</span></div><div class="stat-item"><span class="stat-label">🔫 تسديدات</span><span class="stat-value">${s.shots}</span></div><div class="stat-item"><span class="stat-label">📊 دقة التسديد</span><span class="stat-value ${s.shooting_pct<20&&s.shots>2?"bad":s.shooting_pct>40?"good":"warn"}">${s.shooting_pct}%</span></div><div class="stat-item"><span class="stat-label">⭐ سكور</span><span class="stat-value">${s.score}</span></div><div class="stat-item"><span class="stat-label">⛽ بوست (وسط)</span><span class="stat-value ${s.boost_avg<30?"bad":s.boost_avg<50?"warn":"good"}">${s.boost_avg}</span></div><div class="stat-item"><span class="stat-label">📦 بوست مجمع</span><span class="stat-value">${s.boost_collected}</span></div><div class="stat-item"><span class="stat-label">🔫 بوست مسروق</span><span class="stat-value">${s.boost_stolen}</span></div><div class="stat-item"><span class="stat-label">🟦 بودات كبيرة</span><span class="stat-value">${s.count_big_pads}</span></div><div class="stat-item"><span class="stat-label">🟩 بودات صغيرة</span><span class="stat-value">${s.count_small_pads}</span></div><div class="stat-item"><span class="stat-label">🗑️ بوست مهدر</span><span class="stat-value ${s.boost_wasted_pct>15?"bad":"warn"}">${s.boost_wasted_pct}%</span></div><div class="stat-item"><span class="stat-label">🪫 وقت 0 بوست</span><span class="stat-value ${s.percent_zero_boost>15?"bad":"warn"}">${s.percent_zero_boost}%</span></div><div class="stat-item"><span class="stat-label">🔵 Full boost</span><span class="stat-value">${s.percent_full_boost}%</span></div><div class="stat-item"><span class="stat-label">♻️ Overfill</span><span class="stat-value ${s.overfill_pct>10?"bad":"warn"}">${s.overfill_pct}%</span></div><div class="stat-item"><span class="stat-label">🏃 سرعة وسط</span><span class="stat-value ${s.avg_speed<1500?"warn":"good"}">${s.avg_speed}</span></div><div class="stat-item"><span class="stat-label">💨 Supersonic</span><span class="stat-value">${s.percent_supersonic}%</span></div><div class="stat-item"><span class="stat-label">🚶 بطيء</span><span class="stat-value">${s.time_slow_speed}ث</span></div><div class="stat-item"><span class="stat-label">🌍 على الأرض</span><span class="stat-value">${s.ground_pct}%</span></div><div class="stat-item"><span class="stat-label">🕊️ في الجو</span><span class="stat-value">${s.air_pct}%</span></div><div class="stat-item"><span class="stat-label">🎯 High aerials</span><span class="stat-value">${s.time_high_air}ث</span></div><div class="stat-item"><span class="stat-label">⚔️ هجوم</span><span class="stat-value" style="color:#4a9eff">${s.percent_offensive}%</span></div><div class="stat-item"><span class="stat-label">🛡️ دفاع</span><span class="stat-value" style="color:#ff8c33">${s.percent_defensive}%</span></div><div class="stat-item"><span class="stat-label">📍 مسافة للكرة</span><span class="stat-value">${s.dist_ball}</span></div><div class="stat-item"><span class="stat-label">👥 مسافة للفريق</span><span class="stat-value">${s.dist_mates}</span></div><div class="stat-item"><span class="stat-label">🔙 ورا الكرة</span><span class="stat-value">${s.time_behind_ball}ث</span></div><div class="stat-item"><span class="stat-label">🔜 قدام الكرة</span><span class="stat-value">${s.time_infront_ball}ث</span></div><div class="stat-item"><span class="stat-label">💥 ديمو سويته</span><span class="stat-value">${s.demos_inflicted}</span></div><div class="stat-item"><span class="stat-label">💀 ديمو أخذته</span><span class="stat-value">${s.demos_taken}</span></div><div class="stat-item"><span class="stat-label">🌀 Powerslides</span><span class="stat-value">${s.count_powerslide}</span></div>${s.goals_against_last_defender?`<div class="stat-item"><span class="stat-label">🔥 أهداف بدفاعي</span><span class="stat-value" style="color:#ff1744;font-weight:900">${s.goals_against_last_defender}</span></div>`:""}`;}
@@ -469,7 +473,7 @@ let pendingResults=null;
 function showPlayerPicker(p){if(!p||!p.length)return;const s=document.getElementById("player-picker-select");s.innerHTML=p.map(x=>`<option value="${x.name}">${x.name}</option>`).join("");document.getElementById("player-picker-modal").classList.remove("hidden");}
 function confirmPlayerPick(){const n=document.getElementById("player-picker-select").value;document.getElementById("player-picker-modal").classList.add("hidden");localStorage.setItem("rl_player_name",n);saveAsUserReplay(n);}
 function skipPlayerPick(){document.getElementById("player-picker-modal").classList.add("hidden");saveAsUserReplay(null);}
-function saveAsUserReplay(n){if(n) fetch("/api/user/link-player",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({player_name:n})}).catch(()=>{});showResults(pendingResults);pendingResults=null;}
+function saveAsUserReplay(n){if(n) fetch("/api/user/link-player",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({player_name:n})}).catch(()=>{});showResults(pendingResults,n);pendingResults=null;}
 handleFile=function(file){
     if(!file.name.toLowerCase().endsWith(".replay")){showError("الملف لازم يكون .replay");return;}
     if(!localStorage.getItem("rl_api_key")){showError("سوي حفظ لمفتاح API الأول");return;}
