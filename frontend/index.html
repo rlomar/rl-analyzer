@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RL Analyzer - تحليل ريبلاي روكيت ليق</title>
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -209,19 +209,27 @@
 
         <!-- Admin Panel Modal -->
         <div id="admin-modal" class="modal hidden">
-            <div class="modal-content modal-content-wide">
+            <div class="modal-content modal-content-wide" style="max-width:800px;">
                 <span class="modal-close" onclick="closeAdminPanel()">✕</span>
                 <h3 style="color:#ffd54f;margin-bottom:20px;">
                     <svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align:middle;margin-left:8px;"><path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
                     لوحة التحكم
                 </h3>
-                <div id="admin-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+                <div id="admin-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
                     <div class="stat-card" style="text-align:center;"><span>👥</span><h3>المستخدمين</h3><strong id="admin-stat-users">-</strong></div>
-                    <div class="stat-card" style="text-align:center;"><span>🎮</span><h3>الريبلايات</h3><strong id="admin-stat-replays">-</strong></div>
+                    <div class="stat-card" style="text-align:center;"><span>🎮</span><h3>كل الريبلايات</h3><strong id="admin-stat-replays">-</strong></div>
                     <div class="stat-card" style="text-align:center;"><span>🏃</span><h3>اللاعبين</h3><strong id="admin-stat-players">-</strong></div>
+                    <div class="stat-card" style="text-align:center;"><span>📅</span><h3>رفع اليوم</h3><strong id="admin-stat-today">-</strong></div>
+                    <div class="stat-card" style="text-align:center;"><span>📆</span><h3>آخر 7 أيام</h3><strong id="admin-stat-week">-</strong></div>
+                    <div class="stat-card" style="text-align:center;"><span>👀</span><h3>زيارات اليوم</h3><strong id="admin-stat-visits">-</strong></div>
                 </div>
                 <h4 style="color:#ccd6f6;margin-bottom:12px;">قائمة المستخدمين</h4>
                 <div id="admin-users-list"><p style="color:#8892b0;">جاري التحميل...</p></div>
+                <!-- User detail sub-panel -->
+                <div id="admin-user-detail" class="hidden" style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;">
+                    <button class="btn btn-sm" onclick="closeAdminUserDetail()" style="margin-bottom:12px;">← رجوع للقائمة</button>
+                    <div id="admin-user-detail-content"></div>
+                </div>
             </div>
         </div>
 
@@ -368,6 +376,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=3"></script>
+    <script src="script.js?v=4"></script>
 </body>
 </html>

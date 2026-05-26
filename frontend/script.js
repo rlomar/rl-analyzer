@@ -36,21 +36,87 @@ function getProviderIcon(username) {
 }
 // ═══ ADMIN PANEL ═══════════════════════
 function showAdminPanel(){
+    document.getElementById("admin-modal").classList.remove("hidden");
+    document.getElementById("admin-user-detail").classList.add("hidden");
+    document.getElementById("admin-users-list").innerHTML='<p style="color:#8892b0;">جاري التحميل...</p>';
     fetch("/api/admin/stats").then(r=>r.json()).then(d=>{
         if(d.error) return;
         document.getElementById("admin-stat-users").textContent=d.stats.users;
         document.getElementById("admin-stat-replays").textContent=d.stats.replays;
         document.getElementById("admin-stat-players").textContent=d.stats.players;
+        document.getElementById("admin-stat-today").textContent=d.stats.today_replays||"0";
+        document.getElementById("admin-stat-week").textContent=d.stats.week_replays||"0";
+        document.getElementById("admin-stat-visits").textContent=d.stats.today_visits||"0";
     }).catch(()=>{});
+    loadAdminUsers();
+}
+function loadAdminUsers(){
     fetch("/api/admin/users").then(r=>r.json()).then(d=>{
-        if(d.error) return;
+        if(d.error){document.getElementById("admin-users-list").innerHTML='<p style="color:#ff1744;">'+d.error+'</p>';return;}
         const el=document.getElementById("admin-users-list");
         if(!d.users||!d.users.length){el.innerHTML="<p style='color:#8892b0;'>لا يوجد مستخدمين</p>";return;}
-        el.innerHTML=`<div class="table-wrap"><table class="history-table"><thead><tr><th>#</th><th>الاسم</th><th>العرض</th><th>hash_tag</th><th>رتبة</th><th>XP</th></tr></thead><tbody>${d.users.map((u,i)=>`<tr><td>${i+1}</td><td>${u.username}</td><td>${u.display_name||"-"}</td><td>${u.hash_tag||"-"}</td><td>${u.is_admin?"<span style='color:#ffd54f;'>Admin</span>":"مستخدم"}</td><td>${u.xp||0}</td></tr>`).join("")}</tbody></table></div>`;
-    }).catch(()=>{});
-    document.getElementById("admin-modal").classList.remove("hidden");
+        el.innerHTML=`<div class="table-wrap"><table class="history-table"><thead><tr><th>#</th><th>الاسم</th><th>العرض</th><th>hash_tag</th><th>النوع</th><th>XP</th><th></th></tr></thead><tbody>${d.users.map((u,i)=>`<tr>
+<td>${i+1}</td>
+<td>${u.username}</td>
+<td>${u.display_name||"-"}</td>
+<td>${u.hash_tag||"-"}</td>
+<td>${u.is_admin?"<span style='color:#ffd54f;'>Admin</span>":"مستخدم"}</td>
+<td>${u.xp||0}</td>
+<td><button class="btn btn-sm" style="padding:2px 10px;font-size:11px;" onclick="showAdminUserDetail(${u.id})">🔍</button></td>
+</tr>`).join("")}</tbody></table></div>`;
+    }).catch(()=>{document.getElementById("admin-users-list").innerHTML='<p style="color:#ff1744;">تعذر التحميل</p>';});
 }
 function closeAdminPanel(){document.getElementById("admin-modal").classList.add("hidden");}
+function showAdminUserDetail(uid){
+    document.getElementById("admin-user-detail-content").innerHTML='<p style="color:#8892b0;">جاري التحميل...</p>';
+    document.getElementById("admin-user-detail").classList.remove("hidden");
+    fetch(`/api/admin/user/${uid}`).then(r=>r.json()).then(d=>{
+        if(d.error){document.getElementById("admin-user-detail-content").innerHTML='<p style="color:#ff1744;">'+d.error+'</p>';return;}
+        const u=d.user;
+        let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="stat-card" style="text-align:center;"><span>👤</span><h3>الاسم</h3><strong>${u.username}</strong></div>
+            <div class="stat-card" style="text-align:center;"><span>🏷️</span><h3>العرض</h3><strong>${u.display_name||"-"}</strong></div>
+            <div class="stat-card" style="text-align:center;"><span>#️⃣</span><h3>hash_tag</h3><strong>${u.hash_tag||"-"}</strong></div>
+            <div class="stat-card" style="text-align:center;"><span>⭐</span><h3>XP</h3><strong>${u.xp||0}</strong></div>
+            <div class="stat-card" style="text-align:center;"><span>🎮</span><h3>المنصة</h3><strong>${u.primary_platform||"-"}</strong></div>
+            <div class="stat-card" style="text-align:center;"><span>🌍</span><h3>البلد</h3><strong>${u.country||"-"}</strong></div>
+        </div>`;
+        if(u.stats){
+            html+=`<p style="color:#8892b0;margin-bottom:8px;">📊 الإحصائيات: ${u.stats.total||0} ريبلاي | ${u.stats.goals||0} هدف | ${u.stats.assists||0} تمرير | ${u.stats.saves||0} تصدي</p>`;
+        }
+        if(u.first_replay) html+=`<p style="color:#5a6a8a;font-size:13px;margin-bottom:12px;">📅 أول ريبلاي: ${u.first_replay.slice(0,10)}</p>`;
+        if(u.replays&&u.replays.length){
+            html+=`<h4 style="color:#ccd6f6;margin-bottom:8px;">آخر الريبلايات</h4><div class="table-wrap"><table class="history-table"><thead><tr><th>#</th><th>الخريطة</th><th>الطور</th><th>التاريخ</th></tr></thead><tbody>${u.replays.map((r,i)=>`<tr><td>${i+1}</td><td>${r.map_name||"-"}</td><td>${r.game_mode||"-"}</td><td style="font-size:12px;color:#5a6a8a;">${r.uploaded_at?r.uploaded_at.slice(0,10):"-"}</td></tr>`).join("")}</tbody></table></div>`;
+        } else {
+            html+=`<p style="color:#8892b0;">ما عنده ريبلايات</p>`;
+        }
+        // Password reset
+        html+=`<div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);">
+            <h4 style="color:#ccd6f6;margin-bottom:8px;">🔑 إعادة تعيين كلمة المرور</h4>
+            <div style="display:flex;gap:10px;">
+                <input type="text" id="admin-reset-pw" placeholder="كلمة مرور جديدة" style="flex:1;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:13px;">
+                <button class="btn btn-sm" onclick="adminResetPassword(${u.id})">حفظ</button>
+            </div>
+            <p id="admin-reset-msg" style="font-size:12px;margin-top:6px;color:#00c853;" class="hidden"></p>
+        </div>`;
+        document.getElementById("admin-user-detail-content").innerHTML=html;
+    }).catch(()=>{document.getElementById("admin-user-detail-content").innerHTML='<p style="color:#ff1744;">تعذر التحميل</p>';});
+}
+function closeAdminUserDetail(){
+    document.getElementById("admin-user-detail").classList.add("hidden");
+    loadAdminUsers();
+}
+function adminResetPassword(uid){
+    const pw=document.getElementById("admin-reset-pw").value.trim();
+    const msg=document.getElementById("admin-reset-msg");
+    if(!pw||pw.length<4){msg.textContent="كلمة المرور 4 أحرف على الأقل";msg.style.color="#ff1744";msg.classList.remove("hidden");return;}
+    fetch(`/api/admin/user/${uid}/reset-password`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pw})})
+    .then(r=>r.json()).then(d=>{
+        if(d.error){msg.textContent=d.error;msg.style.color="#ff1744";msg.classList.remove("hidden");return;}
+        document.getElementById("admin-reset-pw").value="";
+        msg.textContent="✅ تم الحفظ";msg.style.color="#00c853";msg.classList.remove("hidden");
+    }).catch(()=>{msg.textContent="خطأ";msg.style.color="#ff1744";msg.classList.remove("hidden");});
+}
 
 function checkAuth() {
     fetch("/api/me").then(r=>r.json()).then(data => {

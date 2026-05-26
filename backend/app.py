@@ -3,7 +3,7 @@ from datetime import timedelta
 from flask import Flask, request, jsonify, send_from_directory, session, send_file
 from flask_cors import CORS
 from analyzer import RocketLeagueAnalyzer
-from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, check_and_unlock_achievements, get_user_achievements, get_db, award_xp, search_user_exact, get_user_by_display_or_username, get_user_info, get_radar_metrics
+from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, check_and_unlock_achievements, get_user_achievements, get_db, award_xp, search_user_exact, get_user_by_display_or_username, get_user_info, get_radar_metrics, _c
 from urllib.parse import urlencode
 from trends import analyze_trends, generate_scrim_team_analysis
 
@@ -457,14 +457,37 @@ def get_admin_stats():
     total_users = _c(conn, "SELECT COUNT(*) AS c FROM users").fetchone()["c"]
     total_replays = _c(conn, "SELECT COUNT(*) AS c FROM replays").fetchone()["c"]
     total_players = _c(conn, "SELECT COUNT(DISTINCT player_name) AS c FROM player_stats").fetchone()["c"]
+    today_sql = "SELECT COUNT(*) AS c FROM replays WHERE DATE(uploaded_at) = CURRENT_DATE" if USE_PG else "SELECT COUNT(*) AS c FROM replays WHERE DATE(uploaded_at) = DATE('now')"
+    today_replays = _c(conn, today_sql).fetchone()["c"]
+    week_sql = "SELECT COUNT(*) AS c FROM replays WHERE uploaded_at >= CURRENT_DATE - INTERVAL '7 days'" if USE_PG else "SELECT COUNT(*) AS c FROM replays WHERE uploaded_at >= datetime('now', '-7 days')"
+    week_users_sql = "SELECT COUNT(*) AS c FROM users WHERE id >= 0"
+    week_replays = _c(conn, week_sql).fetchone()["c"]
+    visits_sql = "SELECT COUNT(*) AS c FROM page_visits WHERE DATE(visited_at) = CURRENT_DATE" if USE_PG else "SELECT COUNT(*) AS c FROM page_visits WHERE DATE(visited_at) = DATE('now')"
+    today_visits = _c(conn, visits_sql).fetchone()["c"]
     conn.close()
-    return {"users": total_users, "replays": total_replays, "players": total_players}
+    return {"users": total_users, "replays": total_replays, "players": total_players, "today_replays": today_replays, "week_replays": week_replays, "today_visits": today_visits}
 
 def get_admin_users():
     conn = get_db()
-    rows = _c(conn, "SELECT id, username, display_name, hash_tag, is_admin, xp FROM users ORDER BY id DESC LIMIT 100", ()).fetchall()
+    rows = _c(conn, "SELECT id, username, display_name, hash_tag, is_admin, xp FROM users ORDER BY id DESC LIMIT 200").fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+def get_admin_user_detail(user_id):
+    conn = get_db()
+    user = _c(conn, "SELECT id, username, display_name, hash_tag, is_admin, xp, bio, country, primary_platform FROM users WHERE id = %s", (user_id,)).fetchone()
+    if not user:
+        conn.close()
+        return None
+    user = dict(user)
+    replays = _c(conn, "SELECT id, replay_id, map_name, game_mode, uploaded_at FROM replays WHERE user_id = %s ORDER BY uploaded_at DESC LIMIT 50", (user_id,)).fetchall()
+    user["replays"] = [dict(r) for r in replays]
+    stats = _c(conn, "SELECT COUNT(*) AS total, COALESCE(SUM(goals),0) AS goals, COALESCE(SUM(assists),0) AS assists, COALESCE(SUM(saves),0) AS saves FROM player_stats WHERE player_name IN (SELECT player_name FROM replays WHERE user_id = %s)", (user_id,)).fetchone()
+    user["stats"] = dict(stats) if stats else {}
+    first_seen = _c(conn, "SELECT MIN(uploaded_at) AS first FROM replays WHERE user_id = %s", (user_id,)).fetchone()
+    user["first_replay"] = dict(first_seen)["first"] if first_seen and first_seen["first"] else None
+    conn.close()
+    return user
 
 @app.route("/api/admin/stats", methods=["GET"])
 def api_admin_stats():
@@ -487,6 +510,40 @@ def api_admin_users():
     if not row or not row["is_admin"]:
         return jsonify({"error": "غير مصرح"}), 403
     return jsonify({"users": get_admin_users()})
+
+@app.route("/api/admin/user/<int:user_id>", methods=["GET"])
+def api_admin_user_detail(user_id):
+    if "user_id" not in session:
+        return jsonify({"error": "غير مسجل"}), 401
+    conn = get_db()
+    row = _c(conn, "SELECT is_admin FROM users WHERE id = %s", (session["user_id"],)).fetchone()
+    conn.close()
+    if not row or not row["is_admin"]:
+        return jsonify({"error": "غير مصرح"}), 403
+    detail = get_admin_user_detail(user_id)
+    if not detail:
+        return jsonify({"error": "المستخدم غير موجود"}), 404
+    return jsonify({"user": detail})
+
+@app.route("/api/admin/user/<int:user_id>/reset-password", methods=["POST"])
+def api_admin_reset_password(user_id):
+    if "user_id" not in session:
+        return jsonify({"error": "غير مسجل"}), 401
+    conn = get_db()
+    row = _c(conn, "SELECT is_admin FROM users WHERE id = %s", (session["user_id"],)).fetchone()
+    conn.close()
+    if not row or not row["is_admin"]:
+        return jsonify({"error": "غير مصرح"}), 403
+    data = request.get_json(silent=True) or {}
+    new_password = data.get("password", "")
+    if len(new_password) < 4:
+        return jsonify({"error": "كلمة المرور 4 أحرف على الأقل"}), 400
+    conn = get_db()
+    from werkzeug.security import generate_password_hash
+    _c(conn, "UPDATE users SET password = %s WHERE id = %s", (generate_password_hash(new_password), user_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "message": "تم إعادة تعيين كلمة المرور"})
 
 @app.route("/api/set-key", methods=["POST"])
 def set_api_key():
