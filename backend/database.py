@@ -69,12 +69,10 @@ def _generate_hash_tag(conn):
             return tag
     return str(random.randint(1000, 9999))
 
-def create_user(username, password=None, steam_id=None, epic_id=None):
+def create_user(username, password=None, steam_id=None, epic_id=None, is_admin=0):
     conn = get_db()
     try:
         tag = _generate_hash_tag(conn)
-        is_first = _c(conn, "SELECT COUNT(*) AS cnt FROM users").fetchone()["cnt"] == 0
-        is_admin = 1 if is_first else 0
         if steam_id:
             _c(conn, "INSERT INTO users (username, steam_id, hash_tag, is_admin) VALUES (%s, %s, %s, %s)",
                   (username, steam_id, tag, is_admin))

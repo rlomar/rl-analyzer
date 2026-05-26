@@ -29,18 +29,9 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 CORS(app, supports_credentials=True)
 
-# Admin — first user to register becomes admin automatically
-ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "")
-if not ADMIN_USERNAME:
-    from database import get_db as _gdb
-    try:
-        _c = _gdb()
-        _r = _c.execute("SELECT username FROM users WHERE is_admin = 1 ORDER BY id ASC LIMIT 1").fetchone()
-        if _r:
-            ADMIN_USERNAME = _r["username"]
-        _c.close()
-    except Exception:
-        pass
+# Admin credentials – predefined in env (defaults: admin / admin123)
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
 UPLOAD_FOLDER = tempfile.gettempdir()
 os.makedirs(REPLAY_STORAGE, exist_ok=True)
@@ -300,6 +291,25 @@ def api_auth_register():
         return jsonify({"error": "اسم المستخدم يجب أن يكون 3 أحرف على الأقل"}), 400
     if len(password) < 4:
         return jsonify({"error": "كلمة المرور يجب أن تكون 4 أحرف على الأقل"}), 400
+    # Admin account check
+    if username == ADMIN_USERNAME:
+        if password != ADMIN_PASSWORD:
+            return jsonify({"error": "بيانات الدخول غير صحيحة للأدمن"}), 403
+        # Admin register – redirect to login if exists
+        existing = get_user_info(username)
+        if existing:
+            # Already created, just log them in
+            session["user"] = username
+            session["user_id"] = existing["id"]
+            session.permanent = True
+            return jsonify({"success": True, "user": {"username": username, "id": existing["id"]}})
+        uid = create_user(username, password=password, is_admin=1)
+        if not uid:
+            return jsonify({"error": "فشل إنشاء الحساب"}), 500
+        session["user"] = username
+        session["user_id"] = uid
+        session.permanent = True
+        return jsonify({"success": True, "user": {"username": username, "id": uid}})
     existing = get_user_info(username)
     if existing:
         return jsonify({"error": "اسم المستخدم موجود مسبقاً"}), 409
@@ -318,6 +328,17 @@ def api_auth_login():
     password = data.get("password") or ""
     if not username or not password:
         return jsonify({"error": "يرجى إدخال اسم المستخدم وكلمة المرور"}), 400
+    # Admin login
+    if username == ADMIN_USERNAME:
+        if password != ADMIN_PASSWORD:
+            return jsonify({"error": "اسم المستخدم أو كلمة المرور غير صحيحة"}), 401
+        existing = get_user_info(username)
+        if not existing:
+            return jsonify({"error": "حساب الأدمن غير موجود. سجل أولاً."}), 404
+        session["user"] = existing["username"]
+        session["user_id"] = existing["id"]
+        session.permanent = True
+        return jsonify({"success": True, "user": {"username": existing["username"], "display_name": existing.get("display_name"), "hash_tag": existing.get("hash_tag")}})
     user = verify_user(username, password)
     if not user:
         return jsonify({"error": "اسم المستخدم أو كلمة المرور غير صحيحة"}), 401
