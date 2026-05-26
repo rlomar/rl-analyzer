@@ -659,17 +659,28 @@ def api_player_replays(player_name):
 
 @app.route("/api/replay/<replay_id>/download", methods=["GET"])
 def api_replay_download(replay_id):
-    info = get_replay_file_path(replay_id)
-    if not info:
-        return jsonify({"error": "ملف الريبلاي غير موجود"}), 404
-    fp = info.get("file_path")
-    if fp and os.path.exists(fp):
-        return send_file(fp, as_attachment=True, download_name=f"{replay_id}.replay")
-    # Fallback: try constructing the path
+    info = get_replay_file_path(replay_id) if get_replay_file_path else None
+    # 1. Try local file from DB path
+    if info:
+        fp = info.get("file_path")
+        if fp and os.path.exists(fp):
+            return send_file(fp, as_attachment=True, download_name=f"{replay_id}.replay")
+    # 2. Try fallback path
     fallback = os.path.join(REPLAY_STORAGE, f"{replay_id}.replay")
     if os.path.exists(fallback):
         return send_file(fallback, as_attachment=True, download_name=f"{replay_id}.replay")
-    return jsonify({"error": "ملف الريبلاي غير موجود"}), 404
+    # 3. Proxy from Ballchasing
+    try:
+        bc_url = f"{BALLCHASING_API}/replays/{replay_id}/file"
+        r = requests_lib.get(bc_url, headers={"Authorization": HEADERS.get("Authorization", "")}, stream=True)
+        if r.status_code == 200:
+            return send_file(
+                r.raw, as_attachment=True, download_name=f"{replay_id}.replay",
+                mimetype=r.headers.get("content-type", "application/octet-stream")
+            )
+    except Exception:
+        pass
+    return jsonify({"error": "ملف الريبلاي غير متوفر"}), 404
 
 @app.route("/api/user/history", methods=["GET"])
 def api_user_history():
