@@ -288,6 +288,44 @@ def epic_login_complete():
             return jsonify({"error": "فشل إنشاء الحساب"}), 500
     return jsonify({"success": True})
 
+# ── PASSWORD AUTH ──────────────────────────
+@app.route("/api/auth/register", methods=["POST"])
+def api_auth_register():
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+    if not username or not password:
+        return jsonify({"error": "يرجى إدخال اسم المستخدم وكلمة المرور"}), 400
+    if len(username) < 3:
+        return jsonify({"error": "اسم المستخدم يجب أن يكون 3 أحرف على الأقل"}), 400
+    if len(password) < 4:
+        return jsonify({"error": "كلمة المرور يجب أن تكون 4 أحرف على الأقل"}), 400
+    existing = get_user_info(username)
+    if existing:
+        return jsonify({"error": "اسم المستخدم موجود مسبقاً"}), 409
+    uid = create_user(username, password=password)
+    if not uid:
+        return jsonify({"error": "فشل إنشاء الحساب"}), 500
+    session["user"] = username
+    session["user_id"] = uid
+    session.permanent = True
+    return jsonify({"success": True, "user": {"username": username, "id": uid}})
+
+@app.route("/api/auth/login", methods=["POST"])
+def api_auth_login():
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+    if not username or not password:
+        return jsonify({"error": "يرجى إدخال اسم المستخدم وكلمة المرور"}), 400
+    user = verify_user(username, password)
+    if not user:
+        return jsonify({"error": "اسم المستخدم أو كلمة المرور غير صحيحة"}), 401
+    session["user"] = user["username"]
+    session["user_id"] = user["id"]
+    session.permanent = True
+    return jsonify({"success": True, "user": {"username": user["username"], "display_name": user.get("display_name"), "hash_tag": user.get("hash_tag")}})
+
 # ── USER PROFILE & SETTINGS ─────────────────
 @app.route("/api/user/profile", methods=["GET"])
 def api_user_profile():

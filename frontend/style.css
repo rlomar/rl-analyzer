@@ -312,6 +312,28 @@ h1 span {
 .btn-epic:hover {
     background: linear-gradient(135deg, #404040, #555) !important;
 }
+.btn-user {
+    background: linear-gradient(135deg, #5b8cff, #3d6aef) !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
+    display: inline-flex;
+    align-items: center;
+}
+.btn-user:hover {
+    background: linear-gradient(135deg, #3d6aef, #2a4fc0) !important;
+}
+.auth-tab {
+    flex: 1;
+    background: rgba(255,255,255,0.06) !important;
+    color: #8892b0 !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    transition: all 0.25s ease;
+}
+.auth-tab.active {
+    background: linear-gradient(135deg, #5b8cff, #3d6aef) !important;
+    color: #fff !important;
+    border-color: transparent !important;
+}
 .auth-username {
     color: #fff;
     font-weight: 700;

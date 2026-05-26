@@ -129,11 +129,11 @@ def get_user_by_display_or_username(name):
 
 def verify_user(username, password):
     conn = get_db()
-    row = _c(conn, "SELECT password FROM users WHERE username = %s", (username,)).fetchone()
+    row = _c(conn, "SELECT id, username, display_name, hash_tag, password FROM users WHERE username = %s", (username,)).fetchone()
     conn.close()
     if row and check_password_hash(row["password"], password):
-        return True
-    return False
+        return dict(row)
+    return None
 
 def get_user_history(user_id, limit=20):
     conn = get_db()

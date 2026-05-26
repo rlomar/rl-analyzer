@@ -114,9 +114,55 @@ function logoutUser() {
         document.getElementById("auth-logged-out").classList.remove("hidden");
         document.getElementById("auth-logged-in").classList.add("hidden");
         document.getElementById("user-menu").classList.add("hidden");
+        checkAuth();
     }).catch(()=>{});
 }
 checkAuth();
+
+// ═══ PASSWORD AUTH MODAL ═══════════════
+function showAuthModal(){
+    document.getElementById("auth-modal").classList.remove("hidden");
+    document.getElementById("login-error").style.display="none";
+    document.getElementById("reg-error").style.display="none";
+    switchAuthTab("login");
+}
+function closeAuthModal(){document.getElementById("auth-modal").classList.add("hidden");}
+function switchAuthTab(tab){
+    document.querySelectorAll(".auth-tab").forEach(t=>t.classList.remove("active"));
+    document.getElementById("auth-tab-"+tab).classList.add("active");
+    document.getElementById("auth-form-login").classList.toggle("hidden",tab!=="login");
+    document.getElementById("auth-form-register").classList.toggle("hidden",tab!=="register");
+}
+function doLogin(){
+    const u=document.getElementById("login-username").value.trim();
+    const p=document.getElementById("login-password").value;
+    const err=document.getElementById("login-error");
+    if(!u||!p){err.textContent="يرجى ملء جميع الحقول";err.style.display="block";return;}
+    err.style.display="none";
+    fetch("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,password:p})})
+    .then(r=>r.json()).then(d=>{
+        if(d.error){err.textContent=d.error;err.style.display="block";return;}
+        closeAuthModal();
+        document.getElementById("login-username").value="";
+        document.getElementById("login-password").value="";
+        checkAuth();
+    }).catch(()=>{err.textContent="خطأ في الاتصال";err.style.display="block";});
+}
+function doRegister(){
+    const u=document.getElementById("reg-username").value.trim();
+    const p=document.getElementById("reg-password").value;
+    const err=document.getElementById("reg-error");
+    if(!u||!p){err.textContent="يرجى ملء جميع الحقول";err.style.display="block";return;}
+    err.style.display="none";
+    fetch("/api/auth/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,password:p})})
+    .then(r=>r.json()).then(d=>{
+        if(d.error){err.textContent=d.error;err.style.display="block";return;}
+        closeAuthModal();
+        document.getElementById("reg-username").value="";
+        document.getElementById("reg-password").value="";
+        checkAuth();
+    }).catch(()=>{err.textContent="خطأ في الاتصال";err.style.display="block";});
+}
 
 // ═══ TAB SWITCHING ════════════════════
 function switchTab(tab){
