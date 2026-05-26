@@ -655,7 +655,6 @@ function openChat(chatId, otherName){
         chatPollInterval=setInterval(()=>pollChat(chatId),3000);
         lastUnreadCount=0;
         updateChatBadge(0);
-        loadChatList();
     }).catch(()=>{msgs.innerHTML='<p style="color:#ff1744;text-align:center;padding:20px;">تعذر التحميل</p>';});
 }
 function pollChat(chatId){

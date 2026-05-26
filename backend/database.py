@@ -978,7 +978,15 @@ def get_chat_messages(chat_id, user_id):
         ORDER BY m.created_at ASC
     """, (chat_id,)).fetchall()
     conn.close()
-    return [{"content": r["content"], "is_mine": r["sender_id"] == user_id, "created_at": r["created_at"]} for r in rows]
+    result = []
+    for r in rows:
+        ca = r["created_at"]
+        if hasattr(ca, "strftime"):
+            ca = ca.strftime("%Y-%m-%d %H:%M:%S")
+        elif ca is None:
+            ca = ""
+        result.append({"content": r["content"], "is_mine": r["sender_id"] == user_id, "created_at": str(ca)})
+    return result
 
 def send_message(chat_id, sender_id, content):
     conn = get_db()
