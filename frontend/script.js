@@ -553,7 +553,7 @@ function playNotifySound(){
 let chatOpen=false;
 let activeChatId=null;
 let chatPollInterval=null;
-let lastUnreadCount=0;
+let lastUnreadCount=null;
 let notifyInterval=null;
 function toggleChat(){
     chatOpen=!chatOpen;
