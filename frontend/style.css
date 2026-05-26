@@ -1537,6 +1537,7 @@ h1 span {
 }
 .chat-tab-content {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding: 8px;
 }
@@ -1634,6 +1635,7 @@ h1 span {
 }
 #chat-messages {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding: 12px;
     display: flex;
