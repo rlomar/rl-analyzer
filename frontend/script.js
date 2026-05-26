@@ -41,9 +41,9 @@ function showAdminPanel(){
     document.getElementById("admin-users-list").innerHTML='<p style="color:#8892b0;">جاري التحميل...</p>';
     fetch("/api/admin/stats").then(r=>r.json()).then(d=>{
         if(d.error) return;
-        document.getElementById("admin-stat-users").textContent=d.stats.users;
-        document.getElementById("admin-stat-replays").textContent=d.stats.replays;
-        document.getElementById("admin-stat-players").textContent=d.stats.players;
+        document.getElementById("admin-stat-users").textContent=d.stats.users||"0";
+        document.getElementById("admin-stat-replays").textContent=d.stats.replays||"0";
+        document.getElementById("admin-stat-players").textContent=d.stats.players||"0";
         document.getElementById("admin-stat-today").textContent=d.stats.today_replays||"0";
         document.getElementById("admin-stat-week").textContent=d.stats.week_replays||"0";
         document.getElementById("admin-stat-visits").textContent=d.stats.today_visits||"0";
@@ -55,7 +55,7 @@ function loadAdminUsers(){
         if(d.error){document.getElementById("admin-users-list").innerHTML='<p style="color:#ff1744;">'+d.error+'</p>';return;}
         const el=document.getElementById("admin-users-list");
         if(!d.users||!d.users.length){el.innerHTML="<p style='color:#8892b0;'>لا يوجد مستخدمين</p>";return;}
-        el.innerHTML=`<div class="table-wrap"><table class="history-table"><thead><tr><th>#</th><th>الاسم</th><th>العرض</th><th>hash_tag</th><th>النوع</th><th>XP</th><th></th></tr></thead><tbody>${d.users.map((u,i)=>`<tr>
+        el.innerHTML=`<div class="table-wrap"><table class="history-table"><thead><tr><th>#</th><th>الاسم</th><th>العرض</th><th>المنصة</th><th>النوع</th><th>XP</th><th></th></tr></thead><tbody>${d.users.map((u,i)=>`<tr>
 <td>${i+1}</td>
 <td>${u.username}</td>
 <td>${u.display_name||"-"}</td>
@@ -76,7 +76,7 @@ function showAdminUserDetail(uid){
         let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
             <div class="stat-card" style="text-align:center;"><span>👤</span><h3>الاسم</h3><strong>${u.username}</strong></div>
             <div class="stat-card" style="text-align:center;"><span>🏷️</span><h3>العرض</h3><strong>${u.display_name||"-"}</strong></div>
-            <div class="stat-card" style="text-align:center;"><span>#️⃣</span><h3>hash_tag</h3><strong>${u.hash_tag||"-"}</strong></div>
+            <div class="stat-card" style="text-align:center;"><span>#️⃣</span><h3>المنصة</h3><strong>${u.hash_tag||"-"}</strong></div>
             <div class="stat-card" style="text-align:center;"><span>⭐</span><h3>XP</h3><strong>${u.xp||0}</strong></div>
             <div class="stat-card" style="text-align:center;"><span>🎮</span><h3>المنصة</h3><strong>${u.primary_platform||"-"}</strong></div>
             <div class="stat-card" style="text-align:center;"><span>🌍</span><h3>البلد</h3><strong>${u.country||"-"}</strong></div>
@@ -94,7 +94,7 @@ function showAdminUserDetail(uid){
         html+=`<div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);">
             <h4 style="color:#ccd6f6;margin-bottom:8px;">🔑 إعادة تعيين كلمة المرور</h4>
             <div style="display:flex;gap:10px;">
-                <input type="text" id="admin-reset-pw" placeholder="كلمة مرور جديدة" style="flex:1;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:13px;">
+                <input type="password" id="admin-reset-pw" placeholder="كلمة مرور جديدة" style="flex:1;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:13px;">
                 <button class="btn btn-sm" onclick="adminResetPassword(${u.id})">حفظ</button>
             </div>
             <p id="admin-reset-msg" style="font-size:12px;margin-top:6px;color:#00c853;" class="hidden"></p>
@@ -520,10 +520,7 @@ cs.addEventListener("click",handleCoachSend);ci.addEventListener("keydown",funct
 
 // ═══ STEAM LOGIN ═════════════════════════
 function steamLogin(){fetch("/api/auth/steam").then(r=>r.json()).then(d=>{if(d.url){const w=window.open(d.url,"steam-login","width=600,height=700");const t=setInterval(()=>{if(w.closed){clearInterval(t);checkAuth();}},500);}}).catch(()=>alert("تعذر الاتصال بالخادم"));}
-
-// ═══ EPIC GAMES LOGIN ═══════════════════
-function epicLogin(){fetch("/api/auth/epic").then(r=>r.json()).then(d=>{if(d.url){const w=window.open(d.url,"epic-login","width=500,height=550");const t=setInterval(()=>{if(w.closed){clearInterval(t);checkAuth();}},500);}}).catch(()=>alert("تعذر الاتصال بالخادم"));}
-window.addEventListener("message",function(e){if(e.data==="steam-login-success"||e.data==="epic-login-success")checkAuth();});
+window.addEventListener("message",function(e){if(e.data==="steam-login-success")checkAuth();});
 
 // ═══ PROFILE ═══════════════════════════════
 function showProfile(){
