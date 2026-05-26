@@ -34,10 +34,32 @@ function getProviderIcon(username) {
     if (username.startsWith("epic_")) return "⭐";
     return "👤";
 }
+// ═══ ADMIN PANEL ═══════════════════════
+function showAdminPanel(){
+    fetch("/api/admin/stats").then(r=>r.json()).then(d=>{
+        if(d.error) return;
+        document.getElementById("admin-stat-users").textContent=d.stats.users;
+        document.getElementById("admin-stat-replays").textContent=d.stats.replays;
+        document.getElementById("admin-stat-players").textContent=d.stats.players;
+    }).catch(()=>{});
+    fetch("/api/admin/users").then(r=>r.json()).then(d=>{
+        if(d.error) return;
+        const el=document.getElementById("admin-users-list");
+        if(!d.users||!d.users.length){el.innerHTML="<p style='color:#8892b0;'>لا يوجد مستخدمين</p>";return;}
+        el.innerHTML=`<div class="table-wrap"><table class="history-table"><thead><tr><th>#</th><th>الاسم</th><th>العرض</th><th>hash_tag</th><th>رتبة</th><th>XP</th></tr></thead><tbody>${d.users.map((u,i)=>`<tr><td>${i+1}</td><td>${u.username}</td><td>${u.display_name||"-"}</td><td>${u.hash_tag||"-"}</td><td>${u.is_admin?"<span style='color:#ffd54f;'>Admin</span>":"مستخدم"}</td><td>${u.xp||0}</td></tr>`).join("")}</tbody></table></div>`;
+    }).catch(()=>{});
+    document.getElementById("admin-modal").classList.remove("hidden");
+}
+function closeAdminPanel(){document.getElementById("admin-modal").classList.add("hidden");}
+
 function checkAuth() {
     fetch("/api/me").then(r=>r.json()).then(data => {
         const uph=document.getElementById("user-profile-header");
         if (data.user) {
+            // Show/hide admin button
+            const adminBtn=document.getElementById("menu-admin-btn");
+            if(data.is_admin) adminBtn.classList.remove("hidden");
+            else adminBtn.classList.add("hidden");
             document.getElementById("auth-logged-out").classList.add("hidden");
             document.getElementById("auth-logged-in").classList.remove("hidden");
             document.getElementById("auth-username").textContent = getProviderIcon(data.user) + " " + (data.tagged_name || data.display_name || data.user);

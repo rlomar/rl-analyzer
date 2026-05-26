@@ -50,6 +50,10 @@
                                 <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19.14 12.94c.04-.32.07-.64.07-.94s-.03-.62-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.49.49 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.32-.07.64-.07.94s.03.62.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58z"/></svg>
                                 الإعدادات
                             </button>
+                            <button id="menu-admin-btn" onclick="showAdminPanel()" class="hidden" style="color:#ffd54f;">
+                                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                                لوحة التحكم
+                            </button>
                             <div class="menu-divider"></div>
 
                             <button onclick="logoutUser()" class="menu-danger">
@@ -200,6 +204,24 @@
                     <textarea id="edit-bio" placeholder="عن نفسك" rows="3" style="padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;direction:rtl;resize:vertical;"></textarea>
                     <button class="btn" onclick="saveEditProfile()">💾 حفظ</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Admin Panel Modal -->
+        <div id="admin-modal" class="modal hidden">
+            <div class="modal-content modal-content-wide">
+                <span class="modal-close" onclick="closeAdminPanel()">✕</span>
+                <h3 style="color:#ffd54f;margin-bottom:20px;">
+                    <svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align:middle;margin-left:8px;"><path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                    لوحة التحكم
+                </h3>
+                <div id="admin-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+                    <div class="stat-card" style="text-align:center;"><span>👥</span><h3>المستخدمين</h3><strong id="admin-stat-users">-</strong></div>
+                    <div class="stat-card" style="text-align:center;"><span>🎮</span><h3>الريبلايات</h3><strong id="admin-stat-replays">-</strong></div>
+                    <div class="stat-card" style="text-align:center;"><span>🏃</span><h3>اللاعبين</h3><strong id="admin-stat-players">-</strong></div>
+                </div>
+                <h4 style="color:#ccd6f6;margin-bottom:12px;">قائمة المستخدمين</h4>
+                <div id="admin-users-list"><p style="color:#8892b0;">جاري التحميل...</p></div>
             </div>
         </div>
 

@@ -410,10 +410,15 @@ def api_logout():
 def api_me():
     info = get_db_user_id(session.get("user")) if "user" in session else None
     if info:
-        from database import get_user_settings as _gus
+        from database import get_user_settings as _gus, _c as _gc, get_db
         settings = _gus(info["id"])
         tag = info.get("hash_tag", "")
         display = info.get("display_name") or info.get("username", "")
+        # Check is_admin
+        conn = get_db()
+        row = _gc(conn, "SELECT is_admin FROM users WHERE id = %s", (info["id"],)).fetchone()
+        is_admin = bool(row and row["is_admin"]) if row else False
+        conn.close()
         return jsonify({
             "user": session["user"],
             "user_id": info["id"],
@@ -421,8 +426,46 @@ def api_me():
             "hash_tag": tag,
             "tagged_name": f"{display}#{tag}" if tag else display,
             "settings": settings,
+            "is_admin": is_admin,
         })
     return jsonify({"user": None})
+
+# ── ADMIN ────────────────────────────────
+def get_admin_stats():
+    conn = get_db()
+    total_users = _c(conn, "SELECT COUNT(*) AS c FROM users").fetchone()["c"]
+    total_replays = _c(conn, "SELECT COUNT(*) AS c FROM replays").fetchone()["c"]
+    total_players = _c(conn, "SELECT COUNT(DISTINCT player_name) AS c FROM player_stats").fetchone()["c"]
+    conn.close()
+    return {"users": total_users, "replays": total_replays, "players": total_players}
+
+def get_admin_users():
+    conn = get_db()
+    rows = _c(conn, "SELECT id, username, display_name, hash_tag, is_admin, xp FROM users ORDER BY id DESC LIMIT 100", ()).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+@app.route("/api/admin/stats", methods=["GET"])
+def api_admin_stats():
+    if "user_id" not in session:
+        return jsonify({"error": "غير مسجل"}), 401
+    conn = get_db()
+    row = _c(conn, "SELECT is_admin FROM users WHERE id = %s", (session["user_id"],)).fetchone()
+    conn.close()
+    if not row or not row["is_admin"]:
+        return jsonify({"error": "غير مصرح"}), 403
+    return jsonify({"stats": get_admin_stats()})
+
+@app.route("/api/admin/users", methods=["GET"])
+def api_admin_users():
+    if "user_id" not in session:
+        return jsonify({"error": "غير مسجل"}), 401
+    conn = get_db()
+    row = _c(conn, "SELECT is_admin FROM users WHERE id = %s", (session["user_id"],)).fetchone()
+    conn.close()
+    if not row or not row["is_admin"]:
+        return jsonify({"error": "غير مصرح"}), 403
+    return jsonify({"users": get_admin_users()})
 
 @app.route("/api/set-key", methods=["POST"])
 def set_api_key():
