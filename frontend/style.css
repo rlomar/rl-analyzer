@@ -472,6 +472,8 @@ h1 span {
 .search-result-item:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.04); }
 .search-result-name { font-weight: 700; color: #fff; font-size: 14px; }
 .search-result-stats { font-size: 12px; color: #5a6a8a; }
+.search-result-tag { color: #5b8cff; font-weight: 700; font-size: 11px; margin-right: 4px; }
+.search-result-user { color: #8892b0; font-size: 11px; }
 .search-result-empty { color: #5a6a8a; text-align: center; font-size: 13px; cursor: default; }
 .search-result-empty:hover { background: none; }
 

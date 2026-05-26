@@ -667,17 +667,19 @@ def update_user_profile(user_id, display_name=None, avatar=None, bio=None, count
 def search_players(query, limit=20):
     conn = get_db()
     like = f"%{query}%"
-    # Use ILIKE for PG, LIKE COLLATE NOCASE for SQLite
     like_clause = "ILIKE %s" if USE_PG else "LIKE ? COLLATE NOCASE"
+    hash_clause = "ILIKE %s" if USE_PG else "LIKE ? COLLATE NOCASE"
     sql = f"""
-        SELECT player_name, total_games, total_goals, total_assists, total_saves, avg_score, source FROM (
+        SELECT player_name, total_games, total_goals, total_assists, total_saves, avg_score, source, hash_tag, username FROM (
             SELECT ps.player_name,
                    COUNT(r.id) AS total_games,
                    COALESCE(SUM(ps.goals), 0) AS total_goals,
                    COALESCE(SUM(ps.assists), 0) AS total_assists,
                    COALESCE(SUM(ps.saves), 0) AS total_saves,
                    AVG(ps.score) AS avg_score,
-                   'player' AS source
+                   'player' AS source,
+                   '' AS hash_tag,
+                   '' AS username
             FROM player_stats ps
             JOIN replays r ON ps.replay_id = r.id
             WHERE ps.player_name {like_clause}
@@ -691,21 +693,25 @@ def search_players(query, limit=20):
                    0 AS total_assists,
                    0 AS total_saves,
                    0 AS avg_score,
-                   'user' AS source
+                   'user' AS source,
+                   COALESCE(hash_tag, '') AS hash_tag,
+                   username
             FROM users
-            WHERE (COALESCE(display_name, '') {like_clause} OR username {like_clause})
+            WHERE (COALESCE(display_name, '') {like_clause} OR username {like_clause} OR hash_tag {hash_clause})
         ) combined
         ORDER BY total_games DESC, player_name ASC
         LIMIT %s
     """ if USE_PG else f"""
-        SELECT player_name, total_games, total_goals, total_assists, total_saves, avg_score, source FROM (
+        SELECT player_name, total_games, total_goals, total_assists, total_saves, avg_score, source, hash_tag, username FROM (
             SELECT ps.player_name,
                    COUNT(r.id) AS total_games,
                    SUM(ps.goals) AS total_goals,
                    SUM(ps.assists) AS total_assists,
                    SUM(ps.saves) AS total_saves,
                    AVG(ps.score) AS avg_score,
-                   'player' AS source
+                   'player' AS source,
+                   '' AS hash_tag,
+                   '' AS username
             FROM player_stats ps
             JOIN replays r ON ps.replay_id = r.id
             WHERE ps.player_name LIKE ? COLLATE NOCASE
@@ -719,21 +725,25 @@ def search_players(query, limit=20):
                    0 AS total_assists,
                    0 AS total_saves,
                    0 AS avg_score,
-                   'user' AS source
+                   'user' AS source,
+                   IFNULL(hash_tag, '') AS hash_tag,
+                   username
             FROM users
-            WHERE (IFNULL(display_name, '') LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE)
+            WHERE (IFNULL(display_name, '') LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE OR hash_tag LIKE ? COLLATE NOCASE)
         ) combined
         ORDER BY source = 'user' DESC, total_games DESC, player_name ASC
         LIMIT ?
     """ if USE_PG else f"""
-        SELECT player_name, total_games, total_goals, total_assists, total_saves, avg_score, source FROM (
+        SELECT player_name, total_games, total_goals, total_assists, total_saves, avg_score, source, hash_tag, username FROM (
             SELECT ps.player_name,
                    COUNT(r.id) AS total_games,
                    SUM(ps.goals) AS total_goals,
                    SUM(ps.assists) AS total_assists,
                    SUM(ps.saves) AS total_saves,
                    AVG(ps.score) AS avg_score,
-                   'player' AS source
+                   'player' AS source,
+                   '' AS hash_tag,
+                   '' AS username
             FROM player_stats ps
             JOIN replays r ON ps.replay_id = r.id
             WHERE ps.player_name LIKE ? COLLATE NOCASE
@@ -747,17 +757,19 @@ def search_players(query, limit=20):
                    0 AS total_assists,
                    0 AS total_saves,
                    0 AS avg_score,
-                   'user' AS source
+                   'user' AS source,
+                   IFNULL(hash_tag, '') AS hash_tag,
+                   username
             FROM users
-            WHERE (IFNULL(display_name, '') LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE)
+            WHERE (IFNULL(display_name, '') LIKE ? COLLATE NOCASE OR username LIKE ? COLLATE NOCASE OR hash_tag LIKE ? COLLATE NOCASE)
         ) combined
         ORDER BY source = 'user' DESC, total_games DESC, player_name ASC
         LIMIT ?
     """
     if USE_PG:
-        params = (like, like, like, limit)
+        params = (like, like, like, like, limit)
     else:
-        params = (like, like, like, limit)
+        params = (like, like, like, like, limit)
     rows = _c(conn, sql, params).fetchall()
     conn.close()
     return rows
