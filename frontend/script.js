@@ -123,6 +123,7 @@ function checkAuth() {
     fetch("/api/me").then(r=>r.json()).then(data => {
         const uph=document.getElementById("user-profile-header");
         if (data.user) {
+            startUnreadPolling();
             // Show/hide admin button
             const adminBtn=document.getElementById("menu-admin-btn");
             if(data.is_admin && data.user === "admin") adminBtn.classList.remove("hidden");
@@ -534,16 +535,54 @@ function loadFollowingList(el){
     }).catch(()=>{el.innerHTML='<p style="color:#ff1744;">تعذر التحميل</p>';});
 }
 
+// ═══ NOTIFICATION SOUND ═════════════════
+function playNotifySound(){
+    try{
+        const ac=new(window.AudioContext||window.webkitAudioContext)();
+        const o=ac.createOscillator();
+        const g=ac.createGain();
+        o.connect(g);g.connect(ac.destination);
+        o.type="sine";o.frequency.value=880;
+        g.gain.setValueAtTime(0.3,ac.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.15);
+        o.start(ac.currentTime);o.stop(ac.currentTime+0.15);
+    }catch(e){}
+}
+
 // ═══ CHAT SYSTEM ════════════════════════
 let chatOpen=false;
 let activeChatId=null;
 let chatPollInterval=null;
+let lastUnreadCount=0;
+let notifyInterval=null;
 function toggleChat(){
     chatOpen=!chatOpen;
     const p=document.getElementById("chat-panel");
     p.classList.toggle("hidden",!chatOpen);
-    if(chatOpen) loadChatList();
-    else {if(chatPollInterval){clearInterval(chatPollInterval);chatPollInterval=null;}}
+    if(chatOpen){loadChatList();}
+    else {
+        if(chatPollInterval){clearInterval(chatPollInterval);chatPollInterval=null;}
+        if(activeChatId){
+            fetch("/api/chat/"+activeChatId+"/read",{method:"POST"});
+        }
+    }
+}
+function updateChatBadge(count){
+    const b=document.getElementById("chat-badge");
+    if(!b) return;
+    if(count>0){b.textContent=count>99?"99+":count;b.classList.remove("hidden");}
+    else b.classList.add("hidden");
+}
+function startUnreadPolling(){
+    if(notifyInterval) clearInterval(notifyInterval);
+    notifyInterval=setInterval(()=>{
+        fetch("/api/chats/unread").then(r=>r.json()).then(d=>{
+            const u=d.unread||0;
+            if(!chatOpen&&u>lastUnreadCount&&lastUnreadCount!==null) playNotifySound();
+            lastUnreadCount=u;
+            updateChatBadge(u);
+        }).catch(()=>{});
+    },5000);
 }
 function loadChatList(){
     const list=document.getElementById("chat-conversations");
@@ -553,7 +592,7 @@ function loadChatList(){
     fetch("/api/chats").then(r=>r.json()).then(d=>{
         const chats=d.chats||[];
         if(!chats.length){list.innerHTML='<p style="color:#8892b0;text-align:center;padding:20px;">لا توجد محادثات</p>';return;}
-        list.innerHTML=chats.map(c=>`<div class="chat-conv-item" onclick="openChat(${c.id},'${c.other_name||""}')"><div class="chat-conv-avatar">${(c.other_name||"?")[0].toUpperCase()}</div><div class="chat-conv-info"><div class="chat-conv-name">${c.other_name||"غير معروف"}</div><div class="chat-conv-preview">${c.last_message||""}</div></div></div>`).join("");
+        list.innerHTML=chats.map(c=>`<div class="chat-conv-item" onclick="openChat(${c.id},'${c.other_name||""}')"><div class="chat-conv-avatar">${(c.other_name||"?")[0].toUpperCase()}</div><div class="chat-conv-info"><div class="chat-conv-name">${c.other_name||"غير معروف"}${c.unread?` <span class="chat-conv-badge">${c.unread>99?'99+':c.unread}</span>`:""}</div><div class="chat-conv-preview">${c.last_message||""}</div></div></div>`).join("");
     }).catch(()=>{list.innerHTML='<p style="color:#ff1744;text-align:center;padding:20px;">تعذر التحميل</p>';});
 }
 let chatOtherName=null;
@@ -566,12 +605,16 @@ function openChat(chatId, otherName){
     document.getElementById("chat-messages-view").classList.remove("hidden");
     const msgs=document.getElementById("chat-messages");
     msgs.innerHTML='<p style="color:#8892b0;text-align:center;padding:20px;">جاري التحميل...</p>';
+    fetch("/api/chat/"+chatId+"/read",{method:"POST"});
     fetch("/api/chat/"+chatId).then(r=>r.json()).then(d=>{
         const messages=d.messages||[];
         msgs.innerHTML=messages.map(m=>`<div class="chat-msg chat-msg-${m.is_mine?"mine":"other"}"><div class="chat-msg-bubble">${m.content}</div><div class="chat-msg-time">${m.created_at?m.created_at.slice(11,16):""}</div></div>`).join("");
         msgs.scrollTop=msgs.scrollHeight;
         if(chatPollInterval) clearInterval(chatPollInterval);
         chatPollInterval=setInterval(()=>pollChat(chatId),3000);
+        lastUnreadCount=0;
+        updateChatBadge(0);
+        loadChatList();
     }).catch(()=>{msgs.innerHTML='<p style="color:#ff1744;text-align:center;padding:20px;">تعذر التحميل</p>';});
 }
 function pollChat(chatId){

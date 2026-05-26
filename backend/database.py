@@ -328,6 +328,16 @@ def init_db():
             UNIQUE(blocker_id, blocked_id)
         );
     """)
+    # Chat read status
+    _script(conn, """
+        CREATE TABLE IF NOT EXISTS chat_read_status (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id INTEGER NOT NULL REFERENCES chats(id),
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            last_read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(chat_id, user_id)
+        );
+    """)
     # XP column migration
     try:
         _c(conn, "ALTER TABLE users ADD COLUMN xp INTEGER DEFAULT 0")
@@ -929,8 +939,12 @@ def get_user_chats(user_id):
         WHERE c.user1_id = %s OR c.user2_id = %s
         ORDER BY c.id DESC
     """, (user_id, user_id, user_id)).fetchall()
+    result = []
+    for r in rows:
+        r["unread"] = get_unread_count(r["id"], user_id)
+        result.append(r)
     conn.close()
-    return rows
+    return result
 
 def get_chat_messages(chat_id, user_id):
     conn = get_db()
@@ -980,6 +994,41 @@ def get_blocked_users(blocker_id):
     """, (blocker_id,)).fetchall()
     conn.close()
     return rows
+
+def mark_chat_read(chat_id, user_id):
+    conn = get_db()
+    _c(conn, "INSERT OR REPLACE INTO chat_read_status (chat_id, user_id, last_read_at) VALUES (%s, %s, CURRENT_TIMESTAMP)",
+          (chat_id, user_id))
+    conn.commit()
+    conn.close()
+
+def get_unread_count(chat_id, user_id):
+    conn = get_db()
+    row = _c(conn, """
+        SELECT COUNT(*) AS c FROM messages m
+        WHERE m.chat_id = %s AND m.sender_id != %s
+        AND (m.created_at > COALESCE(
+            (SELECT last_read_at FROM chat_read_status WHERE chat_id = %s AND user_id = %s),
+            '1970-01-01'
+        ))
+    """, (chat_id, user_id, chat_id, user_id)).fetchone()
+    conn.close()
+    return row["c"] if row else 0
+
+def get_total_unread_count(user_id):
+    conn = get_db()
+    row = _c(conn, """
+        SELECT COUNT(*) AS c FROM messages m
+        WHERE m.sender_id != %s AND m.chat_id IN (
+            SELECT id FROM chats WHERE user1_id = %s OR user2_id = %s
+        )
+        AND (m.created_at > COALESCE(
+            (SELECT last_read_at FROM chat_read_status WHERE chat_id = m.chat_id AND user_id = %s),
+            '1970-01-01'
+        ))
+    """, (user_id, user_id, user_id, user_id)).fetchone()
+    conn.close()
+    return row["c"] if row else 0
 
 def is_blocked(blocker_id, blocked_id):
     conn = get_db()
