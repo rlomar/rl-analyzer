@@ -288,6 +288,46 @@ def init_db():
         _c(conn, "CREATE UNIQUE INDEX IF NOT EXISTS idx_achievements_unique ON achievements(user_id, achievement_id)")
     except:
         pass
+    # Follows table
+    _script(conn, """
+        CREATE TABLE IF NOT EXISTS follows (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            follower_id INTEGER NOT NULL REFERENCES users(id),
+            following TEXT NOT NULL,
+            player_name TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(follower_id, following)
+        );
+    """)
+    # Chats table
+    _script(conn, """
+        CREATE TABLE IF NOT EXISTS chats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user1_id INTEGER NOT NULL REFERENCES users(id),
+            user2_id INTEGER NOT NULL REFERENCES users(id),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+    # Messages table
+    _script(conn, """
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id INTEGER NOT NULL REFERENCES chats(id),
+            sender_id INTEGER NOT NULL REFERENCES users(id),
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+    # Blocks table
+    _script(conn, """
+        CREATE TABLE IF NOT EXISTS blocks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            blocker_id INTEGER NOT NULL REFERENCES users(id),
+            blocked_id INTEGER NOT NULL REFERENCES users(id),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(blocker_id, blocked_id)
+        );
+    """)
     # XP column migration
     try:
         _c(conn, "ALTER TABLE users ADD COLUMN xp INTEGER DEFAULT 0")
@@ -815,6 +855,138 @@ def get_user_achievements(user_id):
         result.append(entry)
     conn.close()
     return result
+
+# ── FOLLOWS ─────────────────────────────
+def follow_user(follower_id, player_name):
+    conn = get_db()
+    try:
+        _c(conn, "INSERT OR IGNORE INTO follows (follower_id, following, player_name) VALUES (%s, %s, %s)",
+              (follower_id, player_name, player_name))
+        conn.commit()
+        return True
+    except:
+        return False
+    finally:
+        conn.close()
+
+def unfollow_user(follower_id, player_name):
+    conn = get_db()
+    _c(conn, "DELETE FROM follows WHERE follower_id = %s AND following = %s", (follower_id, player_name))
+    conn.commit()
+    conn.close()
+    return True
+
+def get_followers(user_id):
+    conn = get_db()
+    rows = _c(conn, """
+        SELECT u.username, u.display_name FROM follows f
+        JOIN users u ON u.id = f.follower_id
+        WHERE f.player_name IN (
+            SELECT COALESCE(u2.display_name, u2.username) FROM users u2 WHERE u2.id = %s
+        )
+    """, (user_id,)).fetchall()
+    conn.close()
+    return rows
+
+def get_following(user_id):
+    conn = get_db()
+    rows = _c(conn, """
+        SELECT f.following AS player_name, f.player_name FROM follows f
+        WHERE f.follower_id = %s
+    """, (user_id,)).fetchall()
+    conn.close()
+    return rows
+
+def is_following(follower_id, player_name):
+    conn = get_db()
+    row = _c(conn, "SELECT id FROM follows WHERE follower_id = %s AND following = %s",
+              (follower_id, player_name)).fetchone()
+    conn.close()
+    return bool(row)
+
+# ── CHATS ───────────────────────────────
+def create_or_get_chat(user1_id, user2_id):
+    conn = get_db()
+    a, b = min(user1_id, user2_id), max(user1_id, user2_id)
+    row = _c(conn, "SELECT id FROM chats WHERE user1_id = %s AND user2_id = %s", (a, b)).fetchone()
+    if row:
+        conn.close()
+        return row["id"]
+    _c(conn, "INSERT INTO chats (user1_id, user2_id) VALUES (%s, %s)", (a, b))
+    conn.commit()
+    cid = _last_id(conn, "chats")
+    conn.close()
+    return cid
+
+def get_user_chats(user_id):
+    conn = get_db()
+    rows = _c(conn, """
+        SELECT c.id,
+               CASE WHEN c.user1_id = %s THEN u2.username ELSE u1.username END AS other_name
+        FROM chats c
+        JOIN users u1 ON u1.id = c.user1_id
+        JOIN users u2 ON u2.id = c.user2_id
+        WHERE c.user1_id = %s OR c.user2_id = %s
+        ORDER BY c.id DESC
+    """, (user_id, user_id, user_id)).fetchall()
+    conn.close()
+    return rows
+
+def get_chat_messages(chat_id, user_id):
+    conn = get_db()
+    rows = _c(conn, """
+        SELECT m.id, m.content, m.sender_id, m.created_at
+        FROM messages m
+        WHERE m.chat_id = %s
+        ORDER BY m.created_at ASC
+    """, (chat_id,)).fetchall()
+    conn.close()
+    return [{"content": r["content"], "is_mine": r["sender_id"] == user_id, "created_at": r["created_at"]} for r in rows]
+
+def send_message(chat_id, sender_id, content):
+    conn = get_db()
+    _c(conn, "INSERT INTO messages (chat_id, sender_id, content) VALUES (%s, %s, %s)",
+          (chat_id, sender_id, content))
+    conn.commit()
+    conn.close()
+    return True
+
+# ── BLOCKS ──────────────────────────────
+def block_user(blocker_id, blocked_id):
+    conn = get_db()
+    try:
+        _c(conn, "INSERT OR IGNORE INTO blocks (blocker_id, blocked_id) VALUES (%s, %s)",
+              (blocker_id, blocked_id))
+        conn.commit()
+        return True
+    except:
+        return False
+    finally:
+        conn.close()
+
+def unblock_user(blocker_id, blocked_id):
+    conn = get_db()
+    _c(conn, "DELETE FROM blocks WHERE blocker_id = %s AND blocked_id = %s", (blocker_id, blocked_id))
+    conn.commit()
+    conn.close()
+    return True
+
+def get_blocked_users(blocker_id):
+    conn = get_db()
+    rows = _c(conn, """
+        SELECT u.id, u.username FROM blocks b
+        JOIN users u ON u.id = b.blocked_id
+        WHERE b.blocker_id = %s
+    """, (blocker_id,)).fetchall()
+    conn.close()
+    return rows
+
+def is_blocked(blocker_id, blocked_id):
+    conn = get_db()
+    row = _c(conn, "SELECT id FROM blocks WHERE blocker_id = %s AND blocked_id = %s",
+              (blocker_id, blocked_id)).fetchone()
+    conn.close()
+    return bool(row)
 
 def record_visit(path, user_id=None, ip=None, user_agent=None):
     conn = get_db()

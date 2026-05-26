@@ -3,7 +3,7 @@ from datetime import timedelta
 from flask import Flask, request, jsonify, send_from_directory, session, send_file
 from flask_cors import CORS
 from analyzer import RocketLeagueAnalyzer
-from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, check_and_unlock_achievements, get_user_achievements, get_db, award_xp, search_user_exact, get_user_by_display_or_username, get_user_info, get_radar_metrics, _c
+from database import init_db, save_replay, get_player_history, get_player_names, create_user, verify_user, get_user_by_steam, get_user_by_epic, get_user_history, get_user_settings, update_user_settings, get_user_aggregated_stats, get_user_recent_replays, update_user_profile, search_players, get_player_full_profile, get_replays_for_player, get_replay_file_path, get_replay_by_id, set_user_display_name, update_last_replay_player_name, record_visit, check_and_unlock_achievements, get_user_achievements, get_db, award_xp, search_user_exact, get_user_by_display_or_username, get_user_info, get_radar_metrics, _c, follow_user, unfollow_user, get_followers, get_following, is_following, create_or_get_chat, get_user_chats, get_chat_messages, send_message, block_user, unblock_user, get_blocked_users, is_blocked
 from urllib.parse import urlencode
 from trends import analyze_trends, generate_scrim_team_analysis
 
@@ -893,6 +893,117 @@ def api_set_player_name():
         return jsonify({"error": "الاسم مطلوب"}), 400
     set_user_display_name(session["user_id"], player_name)
     return jsonify({"success": True})
+
+# ── FOLLOW API ──────────────────────────
+@app.route("/api/user/follow", methods=["POST"])
+def api_follow():
+    if "user_id" not in session: return jsonify({"error": "سجل الدخول أولاً"}), 401
+    data = request.get_json(silent=True) or {}
+    player_name = data.get("player_name", "").strip()
+    if not player_name: return jsonify({"error": "الاسم مطلوب"}), 400
+    ok = follow_user(session["user_id"], player_name)
+    return jsonify({"success": ok})
+
+@app.route("/api/user/unfollow", methods=["POST"])
+def api_unfollow():
+    if "user_id" not in session: return jsonify({"error": "سجل الدخول أولاً"}), 401
+    data = request.get_json(silent=True) or {}
+    player_name = data.get("player_name", "").strip()
+    if not player_name: return jsonify({"error": "الاسم مطلوب"}), 400
+    unfollow_user(session["user_id"], player_name)
+    return jsonify({"success": True})
+
+@app.route("/api/user/followers", methods=["GET"])
+def api_followers():
+    if "user_id" not in session: return jsonify({"error": "سجل الدخول أولاً"}), 401
+    return jsonify({"followers": get_followers(session["user_id"])})
+
+@app.route("/api/user/following", methods=["GET"])
+def api_following():
+    if "user_id" not in session: return jsonify({"error": "سجل الدخول أولاً"}), 401
+    return jsonify({"following": get_following(session["user_id"])})
+
+@app.route("/api/user/follow-status", methods=["GET"])
+def api_follow_status():
+    if "user_id" not in session: return jsonify({"following": False})
+    player = request.args.get("player", "").strip()
+    if not player: return jsonify({"following": False})
+    return jsonify({"following": is_following(session["user_id"], player)})
+
+# ── CHAT API ────────────────────────────
+@app.route("/api/chats", methods=["GET"])
+def api_chats():
+    if "user_id" not in session: return jsonify({"error": "سجل الدخول أولاً"}), 401
+    chats = get_user_chats(session["user_id"])
+    # Attach last message
+    result = []
+    for c in chats:
+        conn = get_db()
+        row = _c(conn, "SELECT content FROM messages WHERE chat_id = %s ORDER BY created_at DESC LIMIT 1", (c["id"],)).fetchone()
+        conn.close()
+        c["last_message"] = row["content"][:60] if row else ""
+        result.append(c)
+    return jsonify({"chats": result})
+
+@app.route("/api/chat/start", methods=["POST"])
+def api_chat_start():
+    if "user_id" not in session: return jsonify({"error": "سجل الدخول أولاً"}), 401
+    data = request.get_json(silent=True) or {}
+    player_name = data.get("player_name", "").strip()
+    if not player_name: return jsonify({"error": "الاسم مطلوب"}), 400
+    target = get_user_by_display_or_username(player_name)
+    if not target: return jsonify({"error": "المستخدم غير موجود"}), 404
+    if target["id"] == session["user_id"]: return jsonify({"error": "ما تقدر تراسل نفسك"}), 400
+    # Check block
+    if is_blocked(target["id"], session["user_id"]):
+        return jsonify({"error": "هذا المستخدم حظرك"}), 403
+    if is_blocked(session["user_id"], target["id"]):
+        return jsonify({"error": "أنت حظرت هذا المستخدم"}), 403
+    cid = create_or_get_chat(session["user_id"], target["id"])
+    return jsonify({"chat_id": cid})
+
+@app.route("/api/chat/<int:chat_id>", methods=["GET"])
+def api_chat_messages(chat_id):
+    if "user_id" not in session: return jsonify({"error": "سجل الدخول أولاً"}), 401
+    return jsonify({"messages": get_chat_messages(chat_id, session["user_id"])})
+
+@app.route("/api/chat/<int:chat_id>/send", methods=["POST"])
+def api_chat_send(chat_id):
+    if "user_id" not in session: return jsonify({"error": "سجل الدخول أولاً"}), 401
+    data = request.get_json(silent=True) or {}
+    content = data.get("content", "").strip()
+    if not content: return jsonify({"error": "الرسالة فارغة"}), 400
+    send_message(chat_id, session["user_id"], content)
+    return jsonify({"success": True})
+
+# ── BLOCK API ───────────────────────────
+@app.route("/api/user/block", methods=["POST"])
+def api_block():
+    if "user_id" not in session: return jsonify({"error": "سجل الدخول أولاً"}), 401
+    data = request.get_json(silent=True) or {}
+    username = data.get("username", "").strip()
+    if not username: return jsonify({"error": "الاسم مطلوب"}), 400
+    target = get_user_by_display_or_username(username)
+    if not target: return jsonify({"error": "المستخدم غير موجود"}), 404
+    if target["id"] == session["user_id"]: return jsonify({"error": "ما تقدر تحظر نفسك"}), 400
+    ok = block_user(session["user_id"], target["id"])
+    return jsonify({"success": ok})
+
+@app.route("/api/user/unblock", methods=["POST"])
+def api_unblock():
+    if "user_id" not in session: return jsonify({"error": "سجل الدخول أولاً"}), 401
+    data = request.get_json(silent=True) or {}
+    username = data.get("username", "").strip()
+    if not username: return jsonify({"error": "الاسم مطلوب"}), 400
+    target = get_user_by_display_or_username(username)
+    if not target: return jsonify({"error": "المستخدم غير موجود"}), 404
+    unblock_user(session["user_id"], target["id"])
+    return jsonify({"success": True})
+
+@app.route("/api/user/blocked", methods=["GET"])
+def api_blocked():
+    if "user_id" not in session: return jsonify({"error": "سجل الدخول أولاً"}), 401
+    return jsonify({"blocked": get_blocked_users(session["user_id"])})
 
 @app.route("/")
 def index():
