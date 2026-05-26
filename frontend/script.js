@@ -125,7 +125,7 @@ function checkAuth() {
         if (data.user) {
             // Show/hide admin button
             const adminBtn=document.getElementById("menu-admin-btn");
-            if(data.is_admin) adminBtn.classList.remove("hidden");
+            if(data.is_admin && data.user === "admin") adminBtn.classList.remove("hidden");
             else adminBtn.classList.add("hidden");
             document.getElementById("auth-logged-out").classList.add("hidden");
             document.getElementById("auth-logged-in").classList.remove("hidden");
@@ -553,11 +553,15 @@ function loadChatList(){
     fetch("/api/chats").then(r=>r.json()).then(d=>{
         const chats=d.chats||[];
         if(!chats.length){list.innerHTML='<p style="color:#8892b0;text-align:center;padding:20px;">لا توجد محادثات</p>';return;}
-        list.innerHTML=chats.map(c=>`<div class="chat-conv-item" onclick="openChat(${c.id})"><div class="chat-conv-avatar">${(c.other_name||"?")[0].toUpperCase()}</div><div class="chat-conv-info"><div class="chat-conv-name">${c.other_name||"غير معروف"}</div><div class="chat-conv-preview">${c.last_message||""}</div></div></div>`).join("");
+        list.innerHTML=chats.map(c=>`<div class="chat-conv-item" onclick="openChat(${c.id},'${c.other_name||""}')"><div class="chat-conv-avatar">${(c.other_name||"?")[0].toUpperCase()}</div><div class="chat-conv-info"><div class="chat-conv-name">${c.other_name||"غير معروف"}</div><div class="chat-conv-preview">${c.last_message||""}</div></div></div>`).join("");
     }).catch(()=>{list.innerHTML='<p style="color:#ff1744;text-align:center;padding:20px;">تعذر التحميل</p>';});
 }
-function openChat(chatId){
+let chatOtherName=null;
+function openChat(chatId, otherName){
     activeChatId=chatId;
+    chatOtherName=otherName||null;
+    const blockBtn=document.getElementById("chat-block-btn");
+    if(blockBtn&&chatOtherName){blockBtn.style.display="inline-flex";blockBtn.dataset.target=chatOtherName;}
     document.getElementById("chat-list-view").classList.add("hidden");
     document.getElementById("chat-messages-view").classList.remove("hidden");
     const msgs=document.getElementById("chat-messages");
@@ -595,12 +599,43 @@ function sendChatMessage(){
         if(d.success) pollChat(activeChatId);
     }).catch(()=>{});
 }
+function blockChatUser(){
+    const btn=document.getElementById("chat-block-btn");
+    const target=btn.dataset.target;
+    if(!target) return;
+    blockUser(target);
+}
 function startChatWith(playerName){
     fetch("/api/chat/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({player_name:playerName})})
     .then(r=>r.json()).then(d=>{
-        if(d.chat_id){chatOpen=true;document.getElementById("chat-panel").classList.remove("hidden");openChat(d.chat_id);}
+        if(d.chat_id){chatOpen=true;document.getElementById("chat-panel").classList.remove("hidden");openChat(d.chat_id,playerName);}
         else alert(d.error||"فشل");
     }).catch(()=>alert("فشل الاتصال"));
+}
+function blockUser(userName){
+    if(!confirm(`حظر ${userName}؟`)) return;
+    fetch("/api/user/block",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:userName})})
+    .then(r=>r.json()).then(d=>{
+        if(d.success) alert("✅ تم الحظر");
+        else alert(d.error||"فشل");
+    }).catch(()=>alert("فشل الاتصال"));
+}
+function unblockUser(userName){
+    fetch("/api/user/unblock",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:userName})})
+    .then(r=>r.json()).then(d=>{
+        if(d.success){alert("✅ تم إلغاء الحظر");loadBlockedList();}
+        else alert(d.error||"فشل");
+    }).catch(()=>alert("فشل الاتصال"));
+}
+function loadBlockedList(){
+    const el=document.getElementById("blocked-list");
+    if(!el) return;
+    el.innerHTML='<p style="color:#8892b0;">جاري التحميل...</p>';
+    fetch("/api/user/blocked").then(r=>r.json()).then(d=>{
+        const list=d.blocked||[];
+        if(!list.length){el.innerHTML='<p style="color:#8892b0;">لا يوجد محظورين</p>';return;}
+        el.innerHTML=list.map(u=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="color:#fff;">${u.username||u.player_name||"غير معروف"}</span><button class="btn btn-sm" onclick="unblockUser('${u.username||u.player_name}')" style="padding:4px 10px;font-size:11px;background:rgba(255,23,68,0.15);border:1px solid rgba(255,23,68,0.2);color:#ff1744;">إلغاء الحظر</button></div>`).join("");
+    }).catch(()=>{el.innerHTML='<p style="color:#ff1744;">تعذر التحميل</p>';});
 }
 
 // ═══════════════════════════════════════════════
@@ -699,6 +734,12 @@ function showProfile(){
             </div>
             <div id="followers-section" class="hidden" style="max-height:200px;overflow-y:auto;"><div id="followers-list"></div></div>
             <div id="following-section" class="hidden" style="max-height:200px;overflow-y:auto;"><div id="following-list"></div></div>
+        </div>
+        <hr style="border-color:rgba(255,255,255,0.05);margin:20px 0;">
+        <div>
+            <h4 style="color:#fff;margin-bottom:12px;">🚫 المحظورون</h4>
+            <button class="btn btn-sm" onclick="document.getElementById('blocked-section').classList.toggle('hidden');loadBlockedList()" style="width:100%;">🚫 عرض المحظورين</button>
+            <div id="blocked-section" class="hidden" style="max-height:200px;overflow-y:auto;margin-top:10px;"><div id="blocked-list"></div></div>
         </div>`;
         c.innerHTML=html;if(u.display_name)document.getElementById("player-name-setting").value=u.display_name;
     }).catch(()=>{c.innerHTML="<p style='color:#ff1744;'>تعذر تحميل الملف الشخصي</p>";});
