@@ -35,21 +35,31 @@ function getProviderIcon(username) {
     return "👤";
 }
 // ═══ ADMIN PANEL ═══════════════════════
+let adminStatsInterval=null;
+function refreshAdminStats(){
+    fetch("/api/admin/stats").then(r=>r.json()).then(d=>{
+        if(d.error)return;
+        const s=d.stats||{};
+        document.getElementById("admin-stat-users").textContent=s.users||"0";
+        document.getElementById("admin-stat-replays").textContent=s.replays||"0";
+        document.getElementById("admin-stat-players").textContent=s.players||"0";
+        document.getElementById("admin-stat-today").textContent=s.today_replays||"0";
+        document.getElementById("admin-stat-week").textContent=s.week_replays||"0";
+        document.getElementById("admin-stat-visits").textContent=s.today_visits||"0";
+    }).catch(()=>{});
+}
 function showAdminPanel(){
     document.getElementById("admin-modal").classList.remove("hidden");
     document.getElementById("admin-user-detail").classList.add("hidden");
     document.getElementById("admin-users-list").innerHTML='<p style="color:#8892b0;">جاري التحميل...</p>';
-    fetch("/api/admin/stats").then(r=>r.json()).then(d=>{
-        if(d.error){console.warn("Admin stats error:",d.error);return;}
-        const s=d.stats||{};
-        document.getElementById("admin-stat-users").textContent=s.users||s.total_users||"0";
-        document.getElementById("admin-stat-replays").textContent=s.replays||s.total_replays||"0";
-        document.getElementById("admin-stat-players").textContent=s.players||s.total_players||"0";
-        document.getElementById("admin-stat-today").textContent=s.today_replays||"0";
-        document.getElementById("admin-stat-week").textContent=s.week_replays||"0";
-        document.getElementById("admin-stat-visits").textContent=s.today_visits||s.visits||"0";
-    }).catch(()=>{console.warn("Admin stats fetch failed");});
+    refreshAdminStats();
     loadAdminUsers();
+    if(adminStatsInterval) clearInterval(adminStatsInterval);
+    adminStatsInterval=setInterval(refreshAdminStats,5000);
+}
+function closeAdminPanel(){
+    document.getElementById("admin-modal").classList.add("hidden");
+    if(adminStatsInterval){clearInterval(adminStatsInterval);adminStatsInterval=null;}
 }
 function loadAdminUsers(){
     fetch("/api/admin/users").then(r=>r.json()).then(d=>{
@@ -125,9 +135,9 @@ function checkAuth() {
         if (data.user) {
             window.currentUsername=data.user;
             startUnreadPolling();
-            // Show/hide admin button
+            // Show/hide admin button — only for "admin" account
             const adminBtn=document.getElementById("menu-admin-btn");
-            if(data.is_admin) adminBtn.classList.remove("hidden");
+            if(data.is_admin && data.user === "admin") adminBtn.classList.remove("hidden");
             else adminBtn.classList.add("hidden");
             document.getElementById("auth-logged-out").classList.add("hidden");
             document.getElementById("auth-logged-in").classList.remove("hidden");
@@ -910,7 +920,7 @@ handleFile=function(file){
     dropZone.classList.add("hidden");uploadStatus.classList.remove("hidden");
     fetch(API_URL,{method:"POST",body:fd}).then(r=>r.json()).then(data=>{
         uploadStatus.classList.add("hidden");dropZone.classList.remove("hidden");
-        if(data.success){pendingResults=data;fetch("/api/me").then(r=>r.json()).then(u=>{if(u.user&&u.user_id&&data.players&&data.players.length)showPlayerPicker(data.players);else showResults(data);}).catch(()=>showResults(data));}
+        if(data.success){pendingResults=data;if(adminStatsInterval)refreshAdminStats();fetch("/api/me").then(r=>r.json()).then(u=>{if(u.user&&u.user_id&&data.players&&data.players.length)showPlayerPicker(data.players);else showResults(data);}).catch(()=>showResults(data));}
         else showError(data.error||"خطأ غير معروف");
     }).catch(()=>{uploadStatus.classList.add("hidden");dropZone.classList.remove("hidden");showError("تعذر الاتصال. شغل الباك اند.");});
 };

@@ -501,37 +501,33 @@ def get_admin_user_detail(user_id):
     conn.close()
     return user
 
-@app.route("/api/admin/stats", methods=["GET"])
-def api_admin_stats():
+def _require_admin():
+    """Returns error response or None. Checks session + is_admin + username=='admin'."""
     if "user_id" not in session:
         return jsonify({"error": "غير مسجل"}), 401
     conn = get_db()
-    row = _c(conn, "SELECT is_admin FROM users WHERE id = %s", (session["user_id"],)).fetchone()
+    row = _c(conn, "SELECT username, is_admin FROM users WHERE id = %s", (session["user_id"],)).fetchone()
     conn.close()
-    if not row or not row["is_admin"]:
+    if not row or not row["is_admin"] or row["username"] != "admin":
         return jsonify({"error": "غير مصرح"}), 403
+    return None
+
+@app.route("/api/admin/stats", methods=["GET"])
+def api_admin_stats():
+    err = _require_admin()
+    if err: return err
     return jsonify({"stats": get_admin_stats()})
 
 @app.route("/api/admin/users", methods=["GET"])
 def api_admin_users():
-    if "user_id" not in session:
-        return jsonify({"error": "غير مسجل"}), 401
-    conn = get_db()
-    row = _c(conn, "SELECT is_admin FROM users WHERE id = %s", (session["user_id"],)).fetchone()
-    conn.close()
-    if not row or not row["is_admin"]:
-        return jsonify({"error": "غير مصرح"}), 403
+    err = _require_admin()
+    if err: return err
     return jsonify({"users": get_admin_users()})
 
 @app.route("/api/admin/user/<int:user_id>", methods=["GET"])
 def api_admin_user_detail(user_id):
-    if "user_id" not in session:
-        return jsonify({"error": "غير مسجل"}), 401
-    conn = get_db()
-    row = _c(conn, "SELECT is_admin FROM users WHERE id = %s", (session["user_id"],)).fetchone()
-    conn.close()
-    if not row or not row["is_admin"]:
-        return jsonify({"error": "غير مصرح"}), 403
+    err = _require_admin()
+    if err: return err
     detail = get_admin_user_detail(user_id)
     if not detail:
         return jsonify({"error": "المستخدم غير موجود"}), 404
@@ -539,13 +535,8 @@ def api_admin_user_detail(user_id):
 
 @app.route("/api/admin/user/<int:user_id>/reset-password", methods=["POST"])
 def api_admin_reset_password(user_id):
-    if "user_id" not in session:
-        return jsonify({"error": "غير مسجل"}), 401
-    conn = get_db()
-    row = _c(conn, "SELECT is_admin FROM users WHERE id = %s", (session["user_id"],)).fetchone()
-    conn.close()
-    if not row or not row["is_admin"]:
-        return jsonify({"error": "غير مصرح"}), 403
+    err = _require_admin()
+    if err: return err
     data = request.get_json(silent=True) or {}
     new_password = data.get("password", "")
     if len(new_password) < 4:
