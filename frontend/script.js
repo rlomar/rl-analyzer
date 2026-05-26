@@ -41,12 +41,13 @@ function showAdminPanel(){
     document.getElementById("admin-users-list").innerHTML='<p style="color:#8892b0;">جاري التحميل...</p>';
     fetch("/api/admin/stats").then(r=>r.json()).then(d=>{
         if(d.error) return;
-        document.getElementById("admin-stat-users").textContent=d.stats.users||"0";
-        document.getElementById("admin-stat-replays").textContent=d.stats.replays||"0";
-        document.getElementById("admin-stat-players").textContent=d.stats.players||"0";
-        document.getElementById("admin-stat-today").textContent=d.stats.today_replays||"0";
-        document.getElementById("admin-stat-week").textContent=d.stats.week_replays||"0";
-        document.getElementById("admin-stat-visits").textContent=d.stats.today_visits||"0";
+        const s=d.stats||{};
+        document.getElementById("admin-stat-users").textContent=s.users||s.total_users||"0";
+        document.getElementById("admin-stat-replays").textContent=s.replays||s.total_replays||"0";
+        document.getElementById("admin-stat-players").textContent=s.players||s.total_players||"0";
+        document.getElementById("admin-stat-today").textContent=s.today_replays||"0";
+        document.getElementById("admin-stat-week").textContent=s.week_replays||"0";
+        document.getElementById("admin-stat-visits").textContent=s.today_visits||s.visits||"0";
     }).catch(()=>{});
     loadAdminUsers();
 }
@@ -424,7 +425,11 @@ function showPlayerProfile(pn){
                             <div class="profile-info">
                                 <h2 style="color:#fff;margin:0;">${tag}</h2>
                                 <p class="profile-sub" style="color:#8892b0;font-size:13px;">👤 مستخدم مسجل — لا توجد ريبلايات بعد</p>
-                                <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${link}');alert('✅ تم نسخ الرابط')" style="margin-top:8px;">🔗 نسخ الرابط</button>
+                                <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;">
+                                    <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${link}');alert('✅ تم نسخ الرابط')" style="padding:6px 14px;font-size:12px;">🔗 نسخ الرابط</button>
+                                    <button class="btn btn-sm follow-btn" data-following="0" onclick="toggleFollow('${pn}',this)" style="padding:6px 14px;font-size:12px;background:rgba(91,140,255,0.2);border:1px solid rgba(91,140,255,0.3);">➕ متابعة</button>
+                                    <button class="btn btn-sm" onclick="startChatWith('${pn}')" style="padding:6px 14px;font-size:12px;background:rgba(0,200,83,0.15);border:1px solid rgba(0,200,83,0.2);">💬</button>
+                                </div>
                             </div>
                         </div>
                     </div>`;
@@ -451,7 +456,11 @@ function showPlayerProfile(pn){
                         <div class="profile-info">
                             <h2 style="color:#fff;margin:0;">${pn}</h2>
                             <p class="profile-sub" style="color:#8892b0;font-size:13px;">${ttl} مباريات إجمالي</p>
-                            <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${plink}');alert('✅ تم نسخ الرابط')" style="margin-top:8px;">🔗 نسخ الرابط</button>
+                            <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;">
+                                <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${plink}');alert('✅ تم نسخ الرابط')" style="padding:6px 14px;font-size:12px;">🔗 نسخ الرابط</button>
+                                <button class="btn btn-sm follow-btn" data-following="0" onclick="toggleFollow('${pn}',this)" style="padding:6px 14px;font-size:12px;background:rgba(91,140,255,0.2);border:1px solid rgba(91,140,255,0.3);">➕ متابعة</button>
+                                <button class="btn btn-sm" onclick="startChatWith('${pn}')" style="padding:6px 14px;font-size:12px;background:rgba(0,200,83,0.15);border:1px solid rgba(0,200,83,0.2);">💬</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -471,10 +480,128 @@ function showPlayerProfile(pn){
                 html+=`</tbody></table></div>`;
             }
             content.innerHTML=html;
+            // Check follow status
+            fetch("/api/user/follow-status?player="+encodeURIComponent(pn)).then(r=>r.json()).then(fd=>{
+                const btn=content.querySelector(".follow-btn");
+                if(btn&&fd.following){
+                    btn.dataset.following="1";
+                    btn.textContent="✅ متابَع";
+                    btn.style.background="rgba(0,200,83,0.2)";
+                    btn.style.border="1px solid rgba(0,200,83,0.3)";
+                }
+            }).catch(()=>{});
         }).catch(()=>{content.innerHTML="<p style='color:#ff1744;'>تعذر تحميل بيانات اللاعب</p>";});
     }).catch(()=>{content.innerHTML="<p style='color:#ff1744;'>تعذر تحميل بيانات اللاعب</p>";});
 }
 function closePlayerProfile(){document.getElementById("player-profile-modal").classList.add("hidden");}
+
+// ═══ FOLLOW SYSTEM ═══════════════════════
+function toggleFollow(playerName, btn){
+    fetch("/api/me").then(r=>r.json()).then(me=>{
+        if(!me.user){alert("سجل الدخول أولاً");return;}
+        const isFollowing=btn.dataset.following==="1";
+        const url=isFollowing?"/api/user/unfollow":"/api/user/follow";
+        fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({player_name:playerName})})
+        .then(r=>r.json()).then(d=>{
+            if(d.success){
+                if(isFollowing){
+                    btn.dataset.following="0";
+                    btn.textContent="➕ متابعة";
+                    btn.style.background="rgba(91,140,255,0.2)";
+                } else {
+                    btn.dataset.following="1";
+                    btn.textContent="✅ متابَع";
+                    btn.style.background="rgba(0,200,83,0.2)";
+                }
+            } else alert(d.error||"خطأ");
+        }).catch(()=>alert("فشل الاتصال"));
+    }).catch(()=>alert("سجل الدخول أولاً"));
+}
+function loadFollowersList(el){
+    el.innerHTML='<p style="color:#8892b0;">جاري التحميل...</p>';
+    fetch("/api/user/followers").then(r=>r.json()).then(d=>{
+        const list=d.followers||[];
+        if(!list.length){el.innerHTML='<p style="color:#8892b0;">لا يوجد متابعين</p>';return;}
+        el.innerHTML=list.map(f=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="color:#fff;">${f.display_name||f.username||f.player_name}</span></div>`).join("");
+    }).catch(()=>{el.innerHTML='<p style="color:#ff1744;">تعذر التحميل</p>';});
+}
+function loadFollowingList(el){
+    el.innerHTML='<p style="color:#8892b0;">جاري التحميل...</p>';
+    fetch("/api/user/following").then(r=>r.json()).then(d=>{
+        const list=d.following||[];
+        if(!list.length){el.innerHTML='<p style="color:#8892b0;">لا توجد متابعات</p>';return;}
+        el.innerHTML=list.map(f=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="color:#fff;cursor:pointer;" onclick="showPlayerProfile('${f.player_name||f.username}')">${f.display_name||f.username||f.player_name}</span></div>`).join("");
+    }).catch(()=>{el.innerHTML='<p style="color:#ff1744;">تعذر التحميل</p>';});
+}
+
+// ═══ CHAT SYSTEM ════════════════════════
+let chatOpen=false;
+let activeChatId=null;
+let chatPollInterval=null;
+function toggleChat(){
+    chatOpen=!chatOpen;
+    const p=document.getElementById("chat-panel");
+    p.classList.toggle("hidden",!chatOpen);
+    if(chatOpen) loadChatList();
+    else {if(chatPollInterval){clearInterval(chatPollInterval);chatPollInterval=null;}}
+}
+function loadChatList(){
+    const list=document.getElementById("chat-conversations");
+    list.innerHTML='<p style="color:#8892b0;text-align:center;padding:20px;">جاري التحميل...</p>';
+    document.getElementById("chat-messages-view").classList.add("hidden");
+    document.getElementById("chat-list-view").classList.remove("hidden");
+    fetch("/api/chats").then(r=>r.json()).then(d=>{
+        const chats=d.chats||[];
+        if(!chats.length){list.innerHTML='<p style="color:#8892b0;text-align:center;padding:20px;">لا توجد محادثات</p>';return;}
+        list.innerHTML=chats.map(c=>`<div class="chat-conv-item" onclick="openChat(${c.id})"><div class="chat-conv-avatar">${(c.other_name||"?")[0].toUpperCase()}</div><div class="chat-conv-info"><div class="chat-conv-name">${c.other_name||"غير معروف"}</div><div class="chat-conv-preview">${c.last_message||""}</div></div></div>`).join("");
+    }).catch(()=>{list.innerHTML='<p style="color:#ff1744;text-align:center;padding:20px;">تعذر التحميل</p>';});
+}
+function openChat(chatId){
+    activeChatId=chatId;
+    document.getElementById("chat-list-view").classList.add("hidden");
+    document.getElementById("chat-messages-view").classList.remove("hidden");
+    const msgs=document.getElementById("chat-messages");
+    msgs.innerHTML='<p style="color:#8892b0;text-align:center;padding:20px;">جاري التحميل...</p>';
+    fetch("/api/chat/"+chatId).then(r=>r.json()).then(d=>{
+        const messages=d.messages||[];
+        msgs.innerHTML=messages.map(m=>`<div class="chat-msg chat-msg-${m.is_mine?"mine":"other"}"><div class="chat-msg-bubble">${m.content}</div><div class="chat-msg-time">${m.created_at?m.created_at.slice(11,16):""}</div></div>`).join("");
+        msgs.scrollTop=msgs.scrollHeight;
+        if(chatPollInterval) clearInterval(chatPollInterval);
+        chatPollInterval=setInterval(()=>pollChat(chatId),3000);
+    }).catch(()=>{msgs.innerHTML='<p style="color:#ff1744;text-align:center;padding:20px;">تعذر التحميل</p>';});
+}
+function pollChat(chatId){
+    fetch("/api/chat/"+chatId+"?t="+Date.now()).then(r=>r.json()).then(d=>{
+        const messages=d.messages||[],msgs=document.getElementById("chat-messages");
+        msgs.innerHTML=messages.map(m=>`<div class="chat-msg chat-msg-${m.is_mine?"mine":"other"}"><div class="chat-msg-bubble">${m.content}</div><div class="chat-msg-time">${m.created_at?m.created_at.slice(11,16):""}</div></div>`).join("");
+        msgs.scrollTop=msgs.scrollHeight;
+    }).catch(()=>{});
+}
+function backToChatList(){
+    if(chatPollInterval){clearInterval(chatPollInterval);chatPollInterval=null;}
+    activeChatId=null;
+    document.getElementById("chat-messages-view").classList.add("hidden");
+    document.getElementById("chat-list-view").classList.remove("hidden");
+    loadChatList();
+}
+function sendChatMessage(){
+    if(!activeChatId) return;
+    const inp=document.getElementById("chat-input");
+    const text=inp.value.trim();
+    if(!text) return;
+    inp.value="";
+    fetch("/api/chat/"+activeChatId+"/send",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({content:text})})
+    .then(r=>r.json()).then(d=>{
+        if(d.success) pollChat(activeChatId);
+    }).catch(()=>{});
+}
+function startChatWith(playerName){
+    fetch("/api/chat/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({player_name:playerName})})
+    .then(r=>r.json()).then(d=>{
+        if(d.chat_id){chatOpen=true;document.getElementById("chat-panel").classList.remove("hidden");openChat(d.chat_id);}
+        else alert(d.error||"فشل");
+    }).catch(()=>alert("فشل الاتصال"));
+}
 
 // ═══════════════════════════════════════════════
 // AI COACH
@@ -562,7 +689,17 @@ function showProfile(){
         // Match history
         if(recent.length>0){html+=`<h4 style="color:#fff;margin:20px 0 10px;">🕐 آخر الريبلايات</h4><div class="table-wrap" style="max-height:250px;overflow-y:auto;"><table class="history-table"><thead><tr><th>#</th><th>اللاعب</th><th>الطور</th><th>أ/ت/تص</th><th>سكور</th><th>التاريخ</th><th></th></tr></thead><tbody>`;recent.forEach((g,i)=>{html+=`<tr><td>#${recent.length-i}</td><td>${g.player_name||"-"}</td><td>${g.game_mode||"-"}</td><td>${g.goals||0}/${g.assists||0}/${g.saves||0}</td><td>${g.score||0}</td><td style="font-size:12px;color:#5a6a8a">${g.uploaded_at?g.uploaded_at.slice(0,10):"-"}</td><td>${g.replay_id?`<a href="/api/replay/${g.replay_id}/download" class="btn btn-sm" style="padding:2px 8px;font-size:11px;text-decoration:none;">⬇</a>`:""}</td></tr>`;});html+=`</tbody></table></div>`;}
         // Link player name
-        html+=`<hr style="border-color:rgba(255,255,255,0.05);margin:20px 0;"><div class="profile-settings-section"><h4 style="color:#fff;margin-bottom:15px;">ربط اسمك في الريبلاي</h4><p style="color:#8892b0;font-size:13px;margin-bottom:10px;">اكتب اسمك عشان الريبلايات الجديدة ترتبط بحسابك تلقائياً:</p><div style="display:flex;gap:10px;"><input type="text" id="player-name-setting" placeholder="اسمك في روكيت ليق" style="flex:1;padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;direction:rtl;"><button class="btn" onclick="savePlayerName()">حفظ</button></div></div>`;
+        html+=`<hr style="border-color:rgba(255,255,255,0.05);margin:20px 0;"><div class="profile-settings-section"><h4 style="color:#fff;margin-bottom:15px;">ربط اسمك في الريبلاي</h4><p style="color:#8892b0;font-size:13px;margin-bottom:10px;">اكتب اسمك عشان الريبلايات الجديدة ترتبط بحسابك تلقائياً:</p><div style="display:flex;gap:10px;"><input type="text" id="player-name-setting" placeholder="اسمك في روكيت ليق" style="flex:1;padding:12px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);color:#fff;font-family:'Tajawal',sans-serif;font-size:14px;direction:rtl;"><button class="btn" onclick="savePlayerName()">حفظ</button></div></div>
+        <hr style="border-color:rgba(255,255,255,0.05);margin:20px 0;">
+        <div style="margin-bottom:15px;">
+            <h4 style="color:#fff;margin-bottom:12px;">👥 المتابعون</h4>
+            <div style="display:flex;gap:10px;margin-bottom:12px;">
+                <button class="btn btn-sm" onclick="document.getElementById('followers-section').classList.toggle('hidden');loadFollowersList(document.getElementById('followers-list'))" style="flex:1;">👤 المتابعون</button>
+                <button class="btn btn-sm" onclick="document.getElementById('following-section').classList.toggle('hidden');loadFollowingList(document.getElementById('following-list'))" style="flex:1;">👤 المتابعات</button>
+            </div>
+            <div id="followers-section" class="hidden" style="max-height:200px;overflow-y:auto;"><div id="followers-list"></div></div>
+            <div id="following-section" class="hidden" style="max-height:200px;overflow-y:auto;"><div id="following-list"></div></div>
+        </div>`;
         c.innerHTML=html;if(u.display_name)document.getElementById("player-name-setting").value=u.display_name;
     }).catch(()=>{c.innerHTML="<p style='color:#ff1744;'>تعذر تحميل الملف الشخصي</p>";});
 }

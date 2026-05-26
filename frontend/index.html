@@ -37,6 +37,9 @@
                         <button class="btn btn-auth btn-auth-hamburger" id="menu-toggle" onclick="toggleUserMenu()">
                             <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
                         </button>
+                        <button class="btn btn-auth btn-auth-hamburger" onclick="toggleChat()" title="المحادثات" style="position:relative;">
+                            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>
+                        </button>
                         <span id="auth-username" class="auth-username"></span>
                         <div id="user-menu" class="user-menu hidden">
                             <button onclick="showProfile()">
@@ -344,6 +347,27 @@
         </main>
 
         <footer><p>RL Analyzer — طُور لعشاق Rocket League</p></footer>
+    </div>
+
+    <!-- Chat Panel -->
+    <div id="chat-panel" class="hidden">
+        <div id="chat-header">
+            <span id="chat-header-title">💬 المحادثات</span>
+            <button id="chat-close" onclick="toggleChat()">✕</button>
+        </div>
+        <div id="chat-list-view">
+            <div id="chat-conversations"><p style="color:#8892b0;text-align:center;padding:20px;">لا توجد محادثات</p></div>
+        </div>
+        <div id="chat-messages-view" class="hidden">
+            <div id="chat-messages-top">
+                <button class="btn btn-sm" onclick="backToChatList()" style="background:none;border:none;color:#5a6a8a;padding:4px 8px;font-size:13px;">← رجوع</button>
+            </div>
+            <div id="chat-messages"></div>
+            <div id="chat-input-area">
+                <input type="text" id="chat-input" placeholder="اكتب رسالتك..." dir="auto">
+                <button id="chat-send" onclick="sendChatMessage()">➤</button>
+            </div>
+        </div>
     </div>
 
     <!-- AI Coach -->
