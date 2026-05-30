@@ -4,18 +4,6 @@ import { Search, User, Target, Zap, Shield, Activity } from "lucide-react";
 import { Button, Card, Input } from "../ui";
 import { api } from "../../lib/api";
 
-interface PlayerAverages {
-  goals: number;
-  assists: number;
-  saves: number;
-  shots: number;
-  score: number;
-  shootingPct: number;
-  boostAvg: number;
-  avgSpeed: number;
-  demosInflicted: number;
-}
-
 function StatCard({ label, value, icon: Icon, sub }: { label: string; value: string | number; icon: any; sub?: string }) {
   return (
     <Card className="p-4 text-center">
