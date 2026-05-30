@@ -9,3 +9,9 @@ data/
 discord-bot/
 .secret_key
 backend/.secret_key
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
