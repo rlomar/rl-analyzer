@@ -20,6 +20,13 @@ enum RequestStatus {
   completed
 }
 
+enum GameMode {
+  ones
+  twos
+  threes
+  scrim
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String
@@ -29,8 +36,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  requests     CoachingRequest[] @relation("UserRequests")
-  coachRequest CoachingRequest[] @relation("CoachRequests")
+  requests       CoachingRequest[] @relation("UserRequests")
+  coachRequest   CoachingRequest[] @relation("CoachRequests")
+  replays        Replay[]
+  achievements   UserAchievement[]
 
   @@map("users")
 }
@@ -54,4 +63,143 @@ model CoachingRequest {
   @@index([coachId])
   @@index([status])
   @@map("coaching_requests")
+}
+
+model Replay {
+  id              String   @id @default(cuid())
+  replayId        String   @unique
+  gameMode        GameMode
+  mapName         String?
+  duration        Float?
+  overtime        Boolean  @default(false)
+  playlist        String?
+  blueName        String?
+  orangeName      String?
+  blueGoals       Int?
+  orangeGoals     Int?
+  userId          String
+  userPlayerName  String?
+  filePath        String?
+  uploadedAt      DateTime @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playerStats PlayerStat[]
+  teamStats   TeamStat[]
+  trends      Trend[]
+
+  @@index([userId])
+  @@index([replayId])
+  @@map("replays")
+}
+
+model PlayerStat {
+  id         String @id @default(cuid())
+  replayId   String
+  playerName String
+  team       String
+  goals    Int     @default(0)
+  assists  Int     @default(0)
+  saves    Int     @default(0)
+  shots    Int     @default(0)
+  score    Int     @default(0)
+  shootingPct Float?
+  boostAvg     Float?
+  boostCollected Int?
+  boostStolen  Int?
+  bigPads      Int?
+  smallPads    Int?
+  boostWastedPct Float?
+  overfillPct  Float?
+  percentZeroBoost Float?
+  percentFullBoost Float?
+  avgSpeed       Float?
+  totalDistance  Float?
+  percentSupersonic Float?
+  timeSlowSpeed  Float?
+  groundPct        Float?
+  airPct           Float?
+  percentOffensive Float?
+  percentDefensive Float?
+  percentNeutral   Float?
+  distBall         Float?
+  distMates        Float?
+  timeBehindBall   Float?
+  timeInfrontBall  Float?
+  goalsAgainstLastDefender Int @default(0)
+  demosInflicted Int @default(0)
+  demosTaken     Int @default(0)
+  countPowerslide Int @default(0)
+
+  replay Replay @relation(fields: [replayId], references: [id], onDelete: Cascade)
+
+  @@index([replayId])
+  @@index([playerName])
+  @@map("player_stats")
+}
+
+model Trend {
+  id         String @id @default(cuid())
+  playerName String
+  replayId   String
+  insight    String?
+  shootingPctDiff   Float?
+  boostAvgDiff      Float?
+  avgSpeedDiff      Float?
+  goalsDiff         Int?
+  savesDiff         Int?
+  assistsDiff       Int?
+  demosInflictedDiff Int?
+  boostWastedPctDiff Float?
+
+  replay Replay @relation(fields: [replayId], references: [id], onDelete: Cascade)
+
+  @@index([playerName])
+  @@index([replayId])
+  @@map("trends")
+}
+
+model TeamStat {
+  id            String @id @default(cuid())
+  replayId      String
+  team          String
+  shots         Int    @default(0)
+  goals         Int    @default(0)
+  saves         Int    @default(0)
+  assists       Int    @default(0)
+  score         Int    @default(0)
+  boostCollected Int?
+  avgSpeed      Float?
+  demosInflicted Int   @default(0)
+  demosTaken    Int    @default(0)
+
+  replay Replay @relation(fields: [replayId], references: [id], onDelete: Cascade)
+
+  @@index([replayId])
+  @@map("team_stats")
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String
+  icon        String   @default("trophy")
+  condition   String?
+
+  users UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id           String   @id @default(cuid())
+  userId       String
+  achievementId String
+  unlockedAt   DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
 }

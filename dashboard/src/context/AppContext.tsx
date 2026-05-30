@@ -13,6 +13,7 @@ interface AppState {
   logout: () => void;
   isAuthenticated: boolean;
   role: Role | null;
+  demoLogin: (role?: Role) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -22,6 +23,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [section, setSection] = useState<Section>("login");
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const demoLogin = useCallback((role: Role = "user") => {
+    const demoUsers: Record<Role, User> = {
+      user: {
+        id: "demo-user-1",
+        email: "demo@rlcoach.com",
+        name: "DemoPlayer",
+        role: "user",
+        createdAt: new Date().toISOString(),
+      },
+      coach: {
+        id: "demo-coach-1",
+        email: "democoach@rlcoach.com",
+        name: "DemoCoach",
+        role: "coach",
+        createdAt: new Date().toISOString(),
+      },
+      admin: {
+        id: "demo-admin-1",
+        email: "demoadmin@rlcoach.com",
+        name: "DemoAdmin",
+        role: "admin",
+        createdAt: new Date().toISOString(),
+      },
+    };
+    setUser(demoUsers[role]);
+    setSection(role === "admin" ? "admin-overview" : "dashboard");
+  }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem("rl_coach_token");
@@ -43,6 +72,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         logout,
         isAuthenticated: !!user,
         role: user?.role ?? null,
+        demoLogin,
       }}
     >
       {children}

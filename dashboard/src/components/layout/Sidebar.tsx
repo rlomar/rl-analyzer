@@ -12,6 +12,9 @@ import {
   CalendarCheck,
   Shield,
   UserCog,
+  BarChart3,
+  History,
+  Search,
   type LucideIcon,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
@@ -30,6 +33,9 @@ const navItems: NavItem[] = [
   { icon: PlusCircle, label: "Create Request", section: "create-request", roles: ["user"] },
   { icon: ClipboardList, label: "Incoming", section: "incoming-requests", roles: ["coach", "admin"] },
   { icon: CalendarCheck, label: "Sessions", section: "sessions", roles: ["coach"] },
+  { icon: BarChart3, label: "Analyze Replay", section: "analyze-replay", roles: ["user", "coach", "admin"] },
+  { icon: History, label: "Replay History", section: "replay-history", roles: ["user", "coach", "admin"] },
+  { icon: Search, label: "Player Profile", section: "player-profile", roles: ["user", "coach", "admin"] },
   { icon: Users, label: "Coaches", section: "coaches", roles: ["user"] },
   { icon: MessageSquare, label: "Messages", section: "messages", roles: ["user", "coach", "admin"] },
   { icon: TrendingUp, label: "Progress", section: "progress", roles: ["user"] },

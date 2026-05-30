@@ -33,6 +33,21 @@ export const api = {
       request<import("../types").CoachingRequest>(`/requests/${id}/notes`, { method: "POST", body: JSON.stringify({ coachNotes }) }),
     all: () => request<import("../types").CoachingRequest[]>("/requests"),
   },
+  replays: {
+    analyze: (file: File, playerName?: string, apiKey?: string) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (playerName) formData.append("playerName", playerName);
+      const headers: Record<string, string> = {};
+      if (apiKey) headers["X-API-Key"] = apiKey;
+      return request<any>("/replays/analyze", { method: "POST", body: formData, headers });
+    },
+    my: () => request<import("../types").ReplaySummary[]>("/replays"),
+    get: (id: string) => request<any>(`/replays/${id}`),
+    playerProfile: (name: string) => request<any>(`/replays/player/${encodeURIComponent(name)}`),
+    searchPlayers: (q: string) => request<string[]>(`/replays/search/players?q=${encodeURIComponent(q)}`),
+    playerProfileSearch: (name: string) => request<any>(`/replays/search/players/profile?name=${encodeURIComponent(name)}`),
+  },
   admin: {
     users: () => request<import("../types").User[]>("/admin/users"),
     updateRole: (id: string, role: import("../types").Role) =>

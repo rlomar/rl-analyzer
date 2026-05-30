@@ -18,6 +18,10 @@ import {
   AdminOverview,
   AdminUsers,
   AdminRequests,
+  AnalyzeReplay,
+  ReplayHistory,
+  PlayerProfile,
+  ReplayDetail,
 } from "./components/sections";
 
 function DashboardApp() {
@@ -46,6 +50,10 @@ function DashboardApp() {
     "admin-overview": <AdminOverview />,
     "admin-users": <AdminUsers />,
     "admin-requests": <AdminRequests />,
+    "analyze-replay": <AnalyzeReplay />,
+    "replay-history": <ReplayHistory />,
+    "player-profile": <PlayerProfile />,
+    "replay-detail": <ReplayDetail />,
   };
 
   return (

@@ -24,6 +24,60 @@ export interface CoachingRequest {
   coach?: { id: string; name: string; email: string } | null;
 }
 
+export interface PlayerStat {
+  id: string;
+  replayId: string;
+  playerName: string;
+  team: string;
+  goals: number;
+  assists: number;
+  saves: number;
+  shots: number;
+  score: number;
+  shootingPct: number | null;
+  boostAvg: number | null;
+  boostCollected: number | null;
+  boostStolen: number | null;
+  bigPads: number | null;
+  smallPads: number | null;
+  boostWastedPct: number | null;
+  overfillPct: number | null;
+  percentZeroBoost: number | null;
+  percentFullBoost: number | null;
+  avgSpeed: number | null;
+  totalDistance: number | null;
+  percentSupersonic: number | null;
+  timeSlowSpeed: number | null;
+  groundPct: number | null;
+  airPct: number | null;
+  percentOffensive: number | null;
+  percentDefensive: number | null;
+  percentNeutral: number | null;
+  distBall: number | null;
+  distMates: number | null;
+  timeBehindBall: number | null;
+  timeInfrontBall: number | null;
+  goalsAgainstLastDefender: number;
+  demosInflicted: number;
+  demosTaken: number;
+  countPowerslide: number;
+}
+
+export interface ReplaySummary {
+  id: string;
+  replayId: string;
+  gameMode: string;
+  mapName: string | null;
+  duration: number | null;
+  overtime: boolean;
+  blueName: string | null;
+  orangeName: string | null;
+  blueGoals: number | null;
+  orangeGoals: number | null;
+  uploadedAt: string;
+  playerStats?: PlayerStat[];
+}
+
 export type Section =
   | "login"
   | "register"
@@ -39,4 +93,8 @@ export type Section =
   | "sessions"
   | "admin-overview"
   | "admin-users"
-  | "admin-requests";
+  | "admin-requests"
+  | "analyze-replay"
+  | "replay-history"
+  | "player-profile"
+  | "replay-detail";

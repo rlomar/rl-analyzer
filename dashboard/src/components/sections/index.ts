@@ -13,3 +13,7 @@ export { SessionsSection } from "./SessionsSection";
 export { AdminOverview } from "./AdminOverview";
 export { AdminUsers } from "./AdminUsers";
 export { AdminRequests } from "./AdminRequests";
+export { AnalyzeReplay } from "./AnalyzeReplay";
+export { ReplayHistory } from "./ReplayHistory";
+export { PlayerProfile } from "./PlayerProfile";
+export { ReplayDetail } from "./ReplayDetail";

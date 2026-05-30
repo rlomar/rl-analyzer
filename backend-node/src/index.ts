@@ -32,10 +32,12 @@ app.use("/api/", limiter);
 import authRoutes from "./routes/auth";
 import requestRoutes from "./routes/requests";
 import adminRoutes from "./routes/admin";
+import replayRoutes from "./routes/replays";
 
 app.use("/api/auth", authRoutes(prisma));
 app.use("/api/requests", requestRoutes(prisma));
 app.use("/api/admin", adminRoutes(prisma));
+app.use("/api/replays", replayRoutes(prisma));
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
