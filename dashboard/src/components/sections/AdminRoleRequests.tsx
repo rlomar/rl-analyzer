@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, XCircle, Clock } from "lucide-react";
+import { CheckCircle, XCircle } from "lucide-react";
 import { Card, Button, Badge } from "../ui";
 import { api } from "../../lib/api";
 import type { RoleRequest } from "../../types";
