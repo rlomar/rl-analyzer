@@ -17,5 +17,5 @@ backend/.secret_key
 !.env.example
 
 node_modules/
-package.json
-package-lock.json
+/package.json
+/package-lock.json
