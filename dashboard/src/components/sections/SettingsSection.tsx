@@ -1,16 +1,24 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Bell, Shield, Globe, Palette, GraduationCap, CheckCircle, Clock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Bell, Shield, Globe, Palette, GraduationCap, CheckCircle, Clock, X } from "lucide-react";
 import { Card, Button } from "../ui";
 import { api } from "../../lib/api";
 import { useApp } from "../../context/AppContext";
 import type { RoleRequest } from "../../types";
+
+const settings = [
+  { icon: Bell, label: "Notifications", desc: "Email and push notification preferences", message: "Notification preferences will be available soon." },
+  { icon: Shield, label: "Privacy", desc: "Manage your privacy settings", message: "Privacy settings will be available soon." },
+  { icon: Globe, label: "Language", desc: "Arabic, English, and more", message: "Arabic/English language toggle coming soon." },
+  { icon: Palette, label: "Appearance", desc: "Dark mode, light mode", message: "Theme customization coming soon." },
+];
 
 export function SettingsSection() {
   const { user } = useApp();
   const [roleRequest, setRoleRequest] = useState<RoleRequest | null>(null);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const fetchRequest = async () => {
     setLoading(true);
@@ -32,18 +40,11 @@ export function SettingsSection() {
       const r = await api.roleRequests.create();
       setRoleRequest(r);
     } catch (e: any) {
-      alert(e.message);
+      setToast(e.message);
     } finally {
       setSending(false);
     }
   };
-
-  const settings = [
-    { icon: Bell, label: "Notifications", desc: "Email and push notification preferences" },
-    { icon: Shield, label: "Privacy", desc: "Manage your privacy settings" },
-    { icon: Globe, label: "Language", desc: "Arabic, English, and more" },
-    { icon: Palette, label: "Appearance", desc: "Dark mode, light mode" },
-  ];
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 lg:p-6 max-w-4xl space-y-6">
@@ -89,7 +90,7 @@ export function SettingsSection() {
         {settings.map((s) => {
           const Icon = s.icon;
           return (
-            <Card key={s.label} hover className="flex items-center gap-4">
+            <Card key={s.label} hover className="flex items-center gap-4 cursor-pointer" onClick={() => setToast(s.message)}>
               <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
                 <Icon size={18} className="text-dark-300" />
               </div>
@@ -102,6 +103,17 @@ export function SettingsSection() {
           );
         })}
       </div>
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="fixed bottom-6 right-6 z-50">
+            <Card className="p-4 flex items-center gap-3 max-w-sm shadow-xl">
+              <p className="text-sm text-dark-200 flex-1">{toast}</p>
+              <button onClick={() => setToast(null)} className="text-dark-500 hover:text-white"><X size={14} /></button>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

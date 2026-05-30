@@ -1,20 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Clock, MapPin, Gamepad2, ChevronRight } from "lucide-react";
 import { Card, Badge } from "../ui";
 import { useApp } from "../../context/AppContext";
+import { api } from "../../lib/api";
 import type { ReplaySummary } from "../../types";
-
-const demoReplays: ReplaySummary[] = [
-  { id: "1", replayId: "bc-1", gameMode: "3v3", mapName: "Mannfield (Night)", duration: 326, overtime: false, blueName: "Blue Team", orangeName: "Orange Team", blueGoals: 4, orangeGoals: 2, uploadedAt: new Date(Date.now() - 3600000).toISOString() },
-  { id: "2", replayId: "bc-2", gameMode: "2v2", mapName: "DFH Stadium", duration: 298, overtime: true, blueName: "Team A", orangeName: "Team B", blueGoals: 3, orangeGoals: 3, uploadedAt: new Date(Date.now() - 86400000).toISOString() },
-  { id: "3", replayId: "bc-3", gameMode: "1v1", mapName: "Urban Central", duration: 245, overtime: false, blueName: "Player 1", orangeName: "Player 2", blueGoals: 5, orangeGoals: 1, uploadedAt: new Date(Date.now() - 172800000).toISOString() },
-  { id: "4", replayId: "bc-4", gameMode: "3v3", mapName: "Champions Field", duration: 412, overtime: false, blueName: "Winners", orangeName: "Losers", blueGoals: 2, orangeGoals: 3, uploadedAt: new Date(Date.now() - 259200000).toISOString() },
-];
 
 export function ReplayHistory() {
   const { setSection, setSelectedRequestId } = useApp();
-  const [replays] = useState<ReplaySummary[]>(demoReplays);
+  const [replays, setReplays] = useState<ReplaySummary[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.replays.my()
+      .then(setReplays)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const modeIcon = (mode: string) => {
     switch (mode) {
@@ -32,7 +34,13 @@ export function ReplayHistory() {
         <p className="text-sm text-dark-400 mt-1">Your uploaded replays and analysis results</p>
       </div>
 
-      {replays.length === 0 ? (
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="glass rounded-2xl p-4 animate-pulse"><div className="h-4 bg-white/5 rounded w-1/2" /></div>
+          ))}
+        </div>
+      ) : replays.length === 0 ? (
         <Card className="p-12 text-center">
           <Clock size={40} className="mx-auto text-dark-500 mb-3" />
           <p className="text-dark-400">No replays analyzed yet</p>

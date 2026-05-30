@@ -187,7 +187,6 @@ export default function replayRoutes(prisma: PrismaClient) {
         orderBy: { uploadedAt: "desc" },
         include: {
           playerStats: {
-            where: { playerName: { not: undefined } },
             take: 1,
           },
         },

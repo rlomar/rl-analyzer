@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, FileText, CheckCircle, BarChart3, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Button, Card, Badge, Input } from "../ui";
+import { api } from "../../lib/api";
 
 interface PlayerStats {
   playerName: string;
@@ -29,20 +30,6 @@ interface AnalysisResult {
   userPlayer: PlayerStats | null;
   newAchievements: { key: string; name: string; description: string; icon: string }[];
 }
-
-const demoResult: AnalysisResult = {
-  replay: { id: "demo-1", replayId: "ballchasing-demo-id", gameMode: "3v3" },
-  gameInfo: { map: "Mannfield (Night)", duration: 326, blueName: "Blue Team", orangeName: "Orange Team", blueGoals: 4, orangeGoals: 2 },
-  players: [
-    { playerName: "DemoPlayer", team: "blue", goals: 2, assists: 1, saves: 3, shots: 5, score: 480, shootingPct: 40, boostAvg: 42, boostWastedPct: 18, avgSpeed: 2150, percentOffensive: 45, percentDefensive: 30, demosInflicted: 1, demosTaken: 2, tips: [{ category: "shooting", priority: "medium", message: "حاول تسدد بدقة أكبر، لا تطلق الكرة عشوائي" }, { category: "positioning", priority: "high", message: "في عدم توازن بين هجومك ودفاعك. حاول تكون متوازن أكثر" }] },
-    { playerName: "Teammate1", team: "blue", goals: 1, assists: 2, saves: 1, shots: 3, score: 320, shootingPct: 33, boostAvg: 38, boostWastedPct: 22, avgSpeed: 2080, percentOffensive: 35, percentDefensive: 40, demosInflicted: 0, demosTaken: 1, tips: [] },
-    { playerName: "Opponent1", team: "orange", goals: 1, assists: 0, saves: 2, shots: 4, score: 290, shootingPct: 25, boostAvg: 35, boostWastedPct: 28, avgSpeed: 1950, percentOffensive: 40, percentDefensive: 35, demosInflicted: 2, demosTaken: 0, tips: [] },
-    { playerName: "Opponent2", team: "orange", goals: 0, assists: 1, saves: 1, shots: 2, score: 180, shootingPct: 0, boostAvg: 30, boostWastedPct: 32, avgSpeed: 1880, percentOffensive: 30, percentDefensive: 45, demosInflicted: 0, demosTaken: 3, tips: [] },
-    { playerName: "Opponent3", team: "orange", goals: 1, assists: 0, saves: 0, shots: 3, score: 210, shootingPct: 33, boostAvg: 28, boostWastedPct: 35, avgSpeed: 1750, percentOffensive: 50, percentDefensive: 25, demosInflicted: 1, demosTaken: 1, tips: [] },
-  ],
-  userPlayer: { playerName: "DemoPlayer", team: "blue", goals: 2, assists: 1, saves: 3, shots: 5, score: 480, shootingPct: 40, boostAvg: 42, boostWastedPct: 18, avgSpeed: 2150, percentOffensive: 45, percentDefensive: 30, demosInflicted: 1, demosTaken: 2, tips: [{ category: "shooting", priority: "medium", message: "حاول تسدد بدقة أكبر، لا تطلق الكرة عشوائي" }, { category: "positioning", priority: "high", message: "في عدم توازن بين هجومك ودفاعك. حاول تكون متوازن أكثر" }] },
-  newAchievements: [{ key: "first_replay", name: "البداية", description: "ارفع أول ريبلاي لك", icon: "upload" }],
-};
 
 function StatBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
   const pct = Math.min((value / max) * 100, 100);
@@ -87,7 +74,7 @@ function PlayerCard({ player, isUser }: { player: PlayerStats; isUser: boolean }
         <StatBar label="Offensive" value={Math.round(player.percentOffensive)} max={100} color="bg-amber-500" />
         <StatBar label="Defensive" value={Math.round(player.percentDefensive)} max={100} color="bg-cyan-500" />
       </div>
-      {player.tips.length > 0 && (
+      {player.tips?.length > 0 && (
         <>
           <button onClick={() => setExpanded(!expanded)} className="flex items-center gap-1 mt-3 text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -132,10 +119,15 @@ export function AnalyzeReplay() {
 
   const handleUpload = async () => {
     if (!file) return;
+    if (!apiKey.trim()) {
+      setError("Ballchasing API key is required");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      setResult(demoResult);
+      const res = await api.replays.analyze(file, undefined, apiKey.trim());
+      setResult(res as AnalysisResult);
     } catch (err: any) {
       setError(err.message || "Analysis failed");
     } finally {
@@ -167,7 +159,7 @@ export function AnalyzeReplay() {
           </Card>
         </div>
 
-        {result.newAchievements.length > 0 && (
+        {result.newAchievements?.length > 0 && (
           <Card className="p-4 border-amber-500/30 bg-amber-500/5">
             <div className="flex items-center gap-2 text-amber-400 font-medium text-sm mb-2"><CheckCircle size={16} /> إنجازات جديدة!</div>
             {result.newAchievements.map((ach) => (
@@ -223,13 +215,13 @@ export function AnalyzeReplay() {
         </div>
 
         <div className="mt-4">
-          <Input label="Ballchasing API Key (optional)" type="password" placeholder="Paste your API key..." value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-          <p className="text-[10px] text-dark-500 mt-1">Get your key at ballchasing.com — if empty, demo mode is used</p>
+          <Input label="Ballchasing API Key" type="password" placeholder="Paste your API key..." value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+          <p className="text-[10px] text-dark-500 mt-1">Required. Get your key at ballchasing.com</p>
         </div>
 
         {error && <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2 mt-4">{error}</p>}
 
-        <Button onClick={handleUpload} disabled={!file || loading} className="w-full mt-4">
+        <Button onClick={handleUpload} disabled={!file || !apiKey.trim() || loading} className="w-full mt-4">
           {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <BarChart3 size={16} />}
           {loading ? "Analyzing..." : "Analyze Replay"}
         </Button>
