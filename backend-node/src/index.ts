@@ -39,6 +39,21 @@ app.use("/api/requests", requestRoutes(prisma));
 app.use("/api/admin", adminRoutes(prisma));
 app.use("/api/replays", replayRoutes(prisma));
 
+app.get("/", (_req, res) => {
+  res.json({
+    name: "RL Coach API",
+    version: "1.0.0",
+    endpoints: {
+      auth: "/api/auth",
+      requests: "/api/requests",
+      replays: "/api/replays",
+      admin: "/api/admin",
+      health: "/api/health",
+    },
+    dashboard: process.env.FRONTEND_URL || "http://localhost:5173",
+  });
+});
+
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
