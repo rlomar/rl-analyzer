@@ -2,6 +2,18 @@ export type Role = "user" | "coach" | "admin";
 
 export type RequestStatus = "pending" | "accepted" | "rejected" | "completed";
 
+export type RoleRequestStatus = "pending" | "approved" | "rejected";
+
+export interface RoleRequest {
+  id: string;
+  userId: string;
+  reason: string | null;
+  status: RoleRequestStatus;
+  createdAt: string;
+  updatedAt: string;
+  user?: { id: string; name: string; email: string; role: Role };
+}
+
 export interface User {
   id: string;
   name: string;
@@ -94,6 +106,7 @@ export type Section =
   | "admin-overview"
   | "admin-users"
   | "admin-requests"
+  | "admin-role-requests"
   | "analyze-replay"
   | "replay-history"
   | "player-profile"

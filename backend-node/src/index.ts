@@ -33,11 +33,13 @@ import authRoutes from "./routes/auth";
 import requestRoutes from "./routes/requests";
 import adminRoutes from "./routes/admin";
 import replayRoutes from "./routes/replays";
+import roleRequestRoutes from "./routes/roleRequests";
 
 app.use("/api/auth", authRoutes(prisma));
 app.use("/api/requests", requestRoutes(prisma));
 app.use("/api/admin", adminRoutes(prisma));
 app.use("/api/replays", replayRoutes(prisma));
+app.use("/api/role-requests", roleRequestRoutes(prisma));
 
 app.get("/", (_req, res) => {
   res.json({
@@ -48,6 +50,7 @@ app.get("/", (_req, res) => {
       requests: "/api/requests",
       replays: "/api/replays",
       admin: "/api/admin",
+      roleRequests: "/api/role-requests",
       health: "/api/health",
     },
     dashboard: process.env.FRONTEND_URL || "http://localhost:5173",

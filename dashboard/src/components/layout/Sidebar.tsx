@@ -15,6 +15,7 @@ import {
   BarChart3,
   History,
   Search,
+  GraduationCap,
   type LucideIcon,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
@@ -42,6 +43,7 @@ const navItems: NavItem[] = [
   { icon: Shield, label: "Overview", section: "admin-overview", roles: ["admin"] },
   { icon: UserCog, label: "Users", section: "admin-users", roles: ["admin"] },
   { icon: ClipboardList, label: "Requests", section: "admin-requests", roles: ["admin"] },
+  { icon: GraduationCap, label: "Role Requests", section: "admin-role-requests", roles: ["admin"] },
   { icon: Settings, label: "Settings", section: "settings", roles: ["user", "coach", "admin"] },
 ];
 

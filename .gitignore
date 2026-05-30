@@ -19,3 +19,4 @@ backend/.secret_key
 node_modules/
 /package.json
 /package-lock.json
+dashboard/start-dev.bat

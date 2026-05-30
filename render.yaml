@@ -4,7 +4,7 @@ services:
     runtime: node
     repo: https://github.com/rlomar/rl-analyzer
     plan: free
-    buildCommand: cd backend-node && npm install --include=dev && npm run build && npx prisma generate && npx prisma db push && npx tsx prisma/seed-achievements.ts
+    buildCommand: cd backend-node && npm install --include=dev && npm run build && npx prisma generate && npx prisma db push && npx tsx prisma/seed-achievements.ts && npx tsx prisma/seed.ts
     startCommand: cd backend-node && node dist/index.js
     envVars:
       - key: NODE_ENV

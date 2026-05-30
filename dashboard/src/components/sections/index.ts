@@ -17,3 +17,4 @@ export { AnalyzeReplay } from "./AnalyzeReplay";
 export { ReplayHistory } from "./ReplayHistory";
 export { PlayerProfile } from "./PlayerProfile";
 export { ReplayDetail } from "./ReplayDetail";
+export { AdminRoleRequests } from "./AdminRoleRequests";

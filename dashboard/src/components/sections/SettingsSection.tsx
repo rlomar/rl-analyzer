@@ -1,21 +1,89 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Bell, Shield, Globe, Palette } from "lucide-react";
-import { Card } from "../ui";
-
-const settings = [
-  { icon: Bell, label: "Notifications", desc: "Email and push notification preferences" },
-  { icon: Shield, label: "Privacy", desc: "Manage your privacy settings" },
-  { icon: Globe, label: "Language", desc: "Arabic, English, and more" },
-  { icon: Palette, label: "Appearance", desc: "Dark mode, light mode" },
-];
+import { Bell, Shield, Globe, Palette, GraduationCap, CheckCircle, Clock } from "lucide-react";
+import { Card, Button } from "../ui";
+import { api } from "../../lib/api";
+import { useApp } from "../../context/AppContext";
+import type { RoleRequest } from "../../types";
 
 export function SettingsSection() {
+  const { user } = useApp();
+  const [roleRequest, setRoleRequest] = useState<RoleRequest | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  const fetchRequest = async () => {
+    setLoading(true);
+    try {
+      const requests = await api.roleRequests.my();
+      setRoleRequest(requests.length > 0 ? requests[0] : null);
+    } catch {
+      setRoleRequest(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchRequest(); }, []);
+
+  const handleRequestCoach = async () => {
+    setSending(true);
+    try {
+      const r = await api.roleRequests.create();
+      setRoleRequest(r);
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const settings = [
+    { icon: Bell, label: "Notifications", desc: "Email and push notification preferences" },
+    { icon: Shield, label: "Privacy", desc: "Manage your privacy settings" },
+    { icon: Globe, label: "Language", desc: "Arabic, English, and more" },
+    { icon: Palette, label: "Appearance", desc: "Dark mode, light mode" },
+  ];
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 lg:p-6 max-w-4xl space-y-6">
       <div>
         <h1 className="text-xl font-bold text-white">Settings</h1>
         <p className="text-sm text-dark-400 mt-1">Manage your preferences</p>
       </div>
+
+      {user?.role === "user" && (
+        <Card className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center shrink-0">
+              <GraduationCap size={18} className="text-indigo-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-white text-sm">Become a Coach</h3>
+              <p className="text-xs text-dark-400 mt-0.5">Request to upgrade your account to coach role</p>
+            </div>
+          </div>
+          {loading ? (
+            <div className="h-9 animate-pulse bg-white/5 rounded-lg" />
+          ) : roleRequest ? (
+            <div className="flex items-center gap-2 text-sm">
+              {roleRequest.status === "pending" && (
+                <><Clock size={16} className="text-yellow-400" /><span className="text-yellow-400">Request pending admin approval</span></>
+              )}
+              {roleRequest.status === "approved" && (
+                <><CheckCircle size={16} className="text-green-400" /><span className="text-green-400">Approved! You are now a coach.</span></>
+              )}
+              {roleRequest.status === "rejected" && (
+                <span className="text-red-400">Request was rejected. You can submit a new one.</span>
+              )}
+            </div>
+          ) : (
+            <Button size="sm" onClick={handleRequestCoach} disabled={sending}>
+              {sending ? "Sending..." : "Request Coach Role"}
+            </Button>
+          )}
+        </Card>
+      )}
 
       <div className="space-y-2">
         {settings.map((s) => {

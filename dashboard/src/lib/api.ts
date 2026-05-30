@@ -48,6 +48,14 @@ export const api = {
     searchPlayers: (q: string) => request<string[]>(`/replays/search/players?q=${encodeURIComponent(q)}`),
     playerProfileSearch: (name: string) => request<any>(`/replays/search/players/profile?name=${encodeURIComponent(name)}`),
   },
+  roleRequests: {
+    create: (reason?: string) =>
+      request<import("../types").RoleRequest>("/role-requests", { method: "POST", body: JSON.stringify({ reason }) }),
+    my: () => request<import("../types").RoleRequest[]>("/role-requests/my"),
+    all: () => request<import("../types").RoleRequest[]>("/role-requests"),
+    approve: (id: string) => request<{ message: string }>(`/role-requests/${id}/approve`, { method: "PATCH" }),
+    reject: (id: string) => request<{ message: string }>(`/role-requests/${id}/reject`, { method: "PATCH" }),
+  },
   admin: {
     users: () => request<import("../types").User[]>("/admin/users"),
     updateRole: (id: string, role: import("../types").Role) =>

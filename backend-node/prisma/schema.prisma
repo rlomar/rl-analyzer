@@ -38,6 +38,7 @@ model User {
 
   requests       CoachingRequest[] @relation("UserRequests")
   coachRequest   CoachingRequest[] @relation("CoachRequests")
+  roleRequests   RoleRequest[]
   replays        Replay[]
   achievements   UserAchievement[]
 
@@ -63,6 +64,27 @@ model CoachingRequest {
   @@index([coachId])
   @@index([status])
   @@map("coaching_requests")
+}
+
+enum RoleRequestStatus {
+  pending
+  approved
+  rejected
+}
+
+model RoleRequest {
+  id        String           @id @default(cuid())
+  userId    String
+  reason    String?
+  status    RoleRequestStatus @default(pending)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("role_requests")
 }
 
 model Replay {

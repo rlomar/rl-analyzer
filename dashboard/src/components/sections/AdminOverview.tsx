@@ -51,6 +51,7 @@ export function AdminOverview() {
       <div className="flex gap-3">
         <Button size="sm" variant="secondary" onClick={() => setSection("admin-users")}>Manage Users</Button>
         <Button size="sm" variant="secondary" onClick={() => setSection("admin-requests")}>All Requests</Button>
+        <Button size="sm" variant="secondary" onClick={() => setSection("admin-role-requests")}>Role Requests</Button>
       </div>
 
       {loading ? (
