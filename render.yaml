@@ -39,7 +39,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://rl-analyzer.onrender.com/api
+        value: https://rl-analyzer-7535.onrender.com/api
 
 databases:
   - name: rl-analyzer-db

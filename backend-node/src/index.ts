@@ -13,8 +13,20 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+const allowedOrigins = [
+  process.env.FRONTEND_URL || "",
+  "https://rl-coach-dashboard.onrender.com",
+  "https://rl-analyzer-7535.onrender.com",
+  /^https:\/\/.*\.onrender\.com$/,
+].filter(Boolean);
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "*",
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.some((o) => (typeof o === "string" && o === origin) || (o instanceof RegExp && o.test(origin)))) {
+      cb(null, true);
+    } else {
+      cb(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
 }));
 app.use(morgan("dev"));
