@@ -23,8 +23,9 @@ services:
           property: connectionString
           append: "?schema=rlcoach"
 
-  - type: static
+  - type: web
     name: rl-coach-dashboard
+    runtime: static
     repo: https://github.com/rlomar/rl-analyzer
     buildCommand: cd dashboard && npm install && npm run build
     staticPublishPath: ./dashboard/dist
