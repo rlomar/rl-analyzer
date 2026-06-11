@@ -77,7 +77,8 @@ def get_steam_display_name(steam_id):
     try:
         r = requests_lib.get(
             f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/",
-            params={"key": STEAM_API_KEY, "steamids": steam_id}
+            params={"key": STEAM_API_KEY, "steamids": steam_id},
+            timeout=15
         )
         data = r.json()
         players = data.get("response", {}).get("players", [])
@@ -608,7 +609,8 @@ def analyze_replay():
             r_post = requests_lib.post(
                 f"{BALLCHASING_API}/v2/upload",
                 headers={"Authorization": api_key},
-                files={"file": (file.filename, f, "application/octet-stream")}
+                files={"file": (file.filename, f, "application/octet-stream")},
+                timeout=60
             )
         if r_post.status_code == 409:
             replay_id = r_post.json().get("id")
@@ -620,16 +622,24 @@ def analyze_replay():
             return jsonify({"error": "ما لقيت replay ID"}), 500
 
         # Poll until data is ready
+        data = None
         for _ in range(15):
             time.sleep(2)
-            r2 = requests_lib.get(
-                f"{BALLCHASING_API}/replays/{replay_id}",
-                headers={"Authorization": api_key}
-            )
-            if r2.status_code == 200:
-                data = r2.json()
-                if data.get("status") == "ok" or "goals" in data.get("blue", {}):
-                    break
+            try:
+                r2 = requests_lib.get(
+                    f"{BALLCHASING_API}/replays/{replay_id}",
+                    headers={"Authorization": api_key},
+                    timeout=30
+                )
+                if r2.status_code == 200:
+                    data = r2.json()
+                    if data.get("status") == "ok" or "goals" in data.get("blue", {}):
+                        break
+            except requests_lib.RequestException:
+                continue
+
+        if not data:
+            return jsonify({"error": "Ballchasing API لم يكتمل التحليل. حاول مرة ثانية."}), 504
 
         actual_mode = detect_game_mode(data)
         if actual_mode != game_mode:
@@ -676,17 +686,25 @@ def analyze_replay():
             })
 
         # New replay — wait for full processing
+        data = None
         for _ in range(15):
             time.sleep(2)
-            r2 = requests_lib.get(
-                f"{BALLCHASING_API}/replays/{replay_id}",
-                headers={"Authorization": api_key}
-            )
-            if r2.status_code == 200:
-                d2 = r2.json()
-                if d2.get("status") == "ok" or "goals" in d2.get("blue", {}):
-                    data = d2
-                    break
+            try:
+                r2 = requests_lib.get(
+                    f"{BALLCHASING_API}/replays/{replay_id}",
+                    headers={"Authorization": api_key},
+                    timeout=30
+                )
+                if r2.status_code == 200:
+                    d2 = r2.json()
+                    if d2.get("status") == "ok" or "goals" in d2.get("blue", {}):
+                        data = d2
+                        break
+            except requests_lib.RequestException:
+                continue
+
+        if not data:
+            return jsonify({"error": "Ballchasing API لم يكتمل التحليل. حاول مرة ثانية."}), 504
 
         analyzer = RocketLeagueAnalyzer(data, game_mode)
         results = analyzer.analyze()
@@ -871,7 +889,7 @@ def api_replay_download(replay_id):
     try:
         bc_url = f"{BALLCHASING_API}/replays/{replay_id}/file"
         bc_key = request.headers.get("X-API-Key") or HEADERS.get("Authorization", "")
-        r = requests_lib.get(bc_url, headers={"Authorization": bc_key}, stream=True)
+        r = requests_lib.get(bc_url, headers={"Authorization": bc_key}, stream=True, timeout=30)
         if r.status_code == 200:
             return send_file(
                 r.raw, as_attachment=True, download_name=f"{replay_id}.replay",
