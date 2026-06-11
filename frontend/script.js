@@ -26,7 +26,7 @@ document.querySelectorAll(".mode-option").forEach(el => {
     });
 });
 const savedKey = localStorage.getItem("rl_api_key");
-if (savedKey) { apiInput.value = savedKey; fetch(SET_KEY_URL, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({key:savedKey}) }); }
+if (savedKey) { apiInput.value = savedKey; }
 
 // ═══ AUTH ═══════════════════════════════════
 function getProviderIcon(username) {
@@ -348,9 +348,10 @@ function copyProfileLink(){
 function saveApiKey() {
     const key = apiInput.value.trim();
     if (!key) { alert("اكتب مفتاح API أول"); return; }
-    fetch(SET_KEY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key})})
-    .then(r=>r.json()).then(d=>{if(d.success){localStorage.setItem("rl_api_key",key);apiStatus.textContent="✅ تم حفظ المفتاح";apiStatus.classList.remove("hidden");setTimeout(()=>apiStatus.classList.add("hidden"),3000);}})
-    .catch(()=>alert("فشل حفظ المفتاح. شغل السيرفر أول."));
+    localStorage.setItem("rl_api_key", key);
+    apiStatus.textContent = "✅ تم حفظ المفتاح";
+    apiStatus.classList.remove("hidden");
+    setTimeout(() => apiStatus.classList.add("hidden"), 3000);
 }
 
 // ── File Upload ────────────────────────
@@ -968,7 +969,8 @@ handleFile=function(file){
     const savedName=localStorage.getItem("rl_player_name");
     if(savedName) fd.append("player_name",savedName);
     dropZone.classList.add("hidden");uploadStatus.classList.remove("hidden");
-    fetch(API_URL,{method:"POST",body:fd}).then(r=>r.json()).then(data=>{
+    const apiKey = localStorage.getItem("rl_api_key");
+    fetch(API_URL,{method:"POST",body:fd,headers:{"X-API-Key":apiKey}}).then(r=>r.json()).then(data=>{
         uploadStatus.classList.add("hidden");dropZone.classList.remove("hidden");
         if(data.success){pendingResults=data;if(adminStatsInterval)refreshAdminStats();fetch("/api/me").then(r=>r.json()).then(u=>{if(u.user&&u.user_id&&data.players&&data.players.length)showPlayerPicker(data.players);else showResults(data);}).catch(()=>showResults(data));}
         else showError(data.error||"خطأ غير معروف");

@@ -595,7 +595,8 @@ def analyze_replay():
     if not file.filename.lower().endswith(".replay"):
         return jsonify({"error": "الملف لازم يكون .replay"}), 400
 
-    if "Authorization" not in HEADERS:
+    api_key = request.headers.get("X-API-Key") or request.headers.get("Authorization")
+    if not api_key:
         return jsonify({"error": "API key, first"}), 401
 
     filepath = os.path.join(UPLOAD_FOLDER, file.filename)
@@ -606,7 +607,7 @@ def analyze_replay():
         with open(filepath, "rb") as f:
             r_post = requests_lib.post(
                 f"{BALLCHASING_API}/v2/upload",
-                headers={"Authorization": HEADERS["Authorization"]},
+                headers={"Authorization": api_key},
                 files={"file": (file.filename, f, "application/octet-stream")}
             )
         if r_post.status_code == 409:
@@ -623,7 +624,7 @@ def analyze_replay():
             time.sleep(2)
             r2 = requests_lib.get(
                 f"{BALLCHASING_API}/replays/{replay_id}",
-                headers={"Authorization": HEADERS["Authorization"]}
+                headers={"Authorization": api_key}
             )
             if r2.status_code == 200:
                 data = r2.json()
@@ -679,7 +680,7 @@ def analyze_replay():
             time.sleep(2)
             r2 = requests_lib.get(
                 f"{BALLCHASING_API}/replays/{replay_id}",
-                headers={"Authorization": HEADERS["Authorization"]}
+                headers={"Authorization": api_key}
             )
             if r2.status_code == 200:
                 d2 = r2.json()
@@ -869,7 +870,8 @@ def api_replay_download(replay_id):
     # 3. Proxy from Ballchasing
     try:
         bc_url = f"{BALLCHASING_API}/replays/{replay_id}/file"
-        r = requests_lib.get(bc_url, headers={"Authorization": HEADERS.get("Authorization", "")}, stream=True)
+        bc_key = request.headers.get("X-API-Key") or HEADERS.get("Authorization", "")
+        r = requests_lib.get(bc_url, headers={"Authorization": bc_key}, stream=True)
         if r.status_code == 200:
             return send_file(
                 r.raw, as_attachment=True, download_name=f"{replay_id}.replay",
