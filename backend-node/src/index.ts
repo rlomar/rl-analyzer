@@ -46,7 +46,9 @@ import requestRoutes from "./routes/requests";
 import adminRoutes from "./routes/admin";
 import replayRoutes from "./routes/replays";
 import roleRequestRoutes from "./routes/roleRequests";
+import flaskCompatRoutes from "./routes/flaskCompat";
 
+app.use("/api", flaskCompatRoutes(prisma));
 app.use("/api/auth", authRoutes(prisma));
 app.use("/api/requests", requestRoutes(prisma));
 app.use("/api/admin", adminRoutes(prisma));
