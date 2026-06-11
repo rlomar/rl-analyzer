@@ -27,8 +27,8 @@ services:
     name: rl-coach-dashboard
     runtime: static
     repo: https://github.com/rlomar/rl-analyzer
-    buildCommand: cd dashboard && npm install --include=dev && npm run build
-    staticPublishPath: ./dashboard/dist
+    buildCommand: echo "Static site, no build needed"
+    staticPublishPath: ./frontend
     headers:
       - path: /*
         name: X-Frame-Options
