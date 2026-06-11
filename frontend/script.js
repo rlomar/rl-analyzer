@@ -4,6 +4,12 @@ setTimeout(()=>{const s=document.getElementById("splash-screen");if(s)s.remove()
 
 const API_URL = "/api/analyze";
 const SET_KEY_URL = "/api/set-key";
+const API_BASE = localStorage.getItem("rl_api_base") || (window.location.hostname.includes("onrender.com") ? "https://rl-analyzer-7535.onrender.com" : "");
+const _fetch = window.fetch;
+window.fetch = function(u, o) {
+    if (typeof u === "string" && u.startsWith("/api/")) u = API_BASE + u;
+    return _fetch.call(this, u, o);
+};
 const apiInput = document.getElementById("api-key-input");
 const apiStatus = document.getElementById("api-status");
 const dropZone = document.getElementById("drop-zone");
